@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Auto Deploy Platform</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        body {
+            padding-top: 70px; /* 关键，避免导航栏遮挡内容 */
+            background-color: #f8f9fa;
+        }
+        .navbar {
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        #log { background: #000; color: #0f0; height: 300px; overflow: auto; padding: 10px; }
+    </style>
+</head>
+<body>
+
+<!-- 🔥 顶部导航 -->
+<nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/">🚀 Auto Deploy Platform</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item">
+                    <a class="nav-link active" href="/">System Monitor</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/static/containers.html">Containers</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<!-- 页面主体 -->
+<div class="container">
+    <h1 class="mb-4">📊 实时系统监控</h1>
+
+    <!-- 系统监控卡片 -->
+    <div class="card mb-4">
+        <div class="card-header">📊 实时系统状态</div>
+        <div class="card-body">
+            <p><strong>Uptime:</strong> <span id="uptime">--</span></p>
+            <p><strong>Load Average:</strong> <span id="load">--</span></p>
+            <p><strong>CPU 使用率:</strong> <span id="cpu">--%</span>
+            <div class="progress">
+                <div id="cpu-bar" class="progress-bar bg-info" role="progressbar" style="width: 0%"></div>
+            </div>
+            </p>
+            <p><strong>内存:</strong> <span id="memory">-- / -- GB</span>
+            <div class="progress">
+                <div id="memory-bar" class="progress-bar bg-warning" role="progressbar" style="width: 0%"></div>
+            </div>
+            </p>
+            <p><strong>磁盘:</strong> <span id="disk">-- / -- GB</span>
+            <div class="progress">
+                <div id="disk-bar" class="progress-bar bg-success" role="progressbar" style="width: 0%"></div>
+            </div>
+            </p>
+        </div>
+    </div>
+
+    <!-- Ansible卡片 -->
+    <div class="card mb-4">
+        <div class="card-header">📜 运行 Ansible Playbook</div>
+        <div class="card-body">
+            <div class="mb-3">
+                <label class="form-label">Inventory 文件</label>
+                <input id="inventory" class="form-control" value="hosts">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Playbook 文件</label>
+                <input id="playbook" class="form-control" value="site.yml">
+            </div>
+            <button class="btn btn-success" onclick="runAnsible()">Run Playbook</button>
+        </div>
+    </div>
+
+    <!-- 日志 -->
+    <div class="card">
+        <div class="card-header">📄 执行日志</div>
+        <div class="card-body">
+            <pre id="log"></pre>
+        </div>
+    </div>
+
+</div>
+
+<!-- Bootstrap 5 JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- 监控 & Ansible 逻辑 -->
+<script>
+    let ws;
+
+    function connectSystemWS() {
+        ws = new WebSocket("ws://192.168.20.116:8081/api/v1/ws-system");
+
+        ws.onopen = function() {
+            console.log("✅ WebSocket Connected");
+        };
+
+        ws.onmessage = function(event) {
+            let data = JSON.parse(event.data);
+
+            // Uptime
+            let uptimeParts = data.uptime.trim().split("load average:");
+            document.getElementById("uptime").innerText = uptimeParts[0].trim();
+            document.getElementById("load").innerText = uptimeParts[1] ? uptimeParts[1].trim() : "--";
+
+            // CPU
+            document.getElementById("cpu").innerText = data.cpu_usage.toFixed(2) + "%";
+            document.getElementById("cpu-bar").style.width = data.cpu_usage.toFixed(2) + "%";
+
+            // Memory
+            let memUsedGB = (data.memory_used / 1024).toFixed(1);
+            let memTotalGB = (data.memory_total / 1024).toFixed(1);
+            document.getElementById("memory").innerText = memUsedGB + " / " + memTotalGB + " GB";
+            let memPercent = (data.memory_used / data.memory_total * 100).toFixed(1);
+            document.getElementById("memory-bar").style.width = memPercent + "%";
+
+            // Disk
+            let diskUsedGB = (data.disk_used / 1024).toFixed(1);
+            let diskTotalGB = (data.disk_total / 1024).toFixed(1);
+            document.getElementById("disk").innerText = diskUsedGB + " / " + diskTotalGB + " GB";
+            let diskPercent = (data.disk_used / data.disk_total * 100).toFixed(1);
+            document.getElementById("disk-bar").style.width = diskPercent + "%";
+        };
+
+        ws.onclose = function() {
+            console.log("⚠️ WebSocket Closed, reconnecting...");
+            setTimeout(connectSystemWS, 2000);
+        };
+    }
+
+    async function runAnsible() {
+        let inventory = document.getElementById("inventory").value;
+        let playbook = document.getElementById("playbook").value;
+        let res = await fetch('/api/v1/run-ansible', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({inventory, playbook})
+        });
+
+        const reader = res.body.getReader();
+        let log = "";
+        while(true) {
+            const { done, value } = await reader.read();
+            if(done) break;
+            log += new TextDecoder().decode(value);
+            document.getElementById("log").innerText = log;
+            document.getElementById("log").scrollTop = document.getElementById("log").scrollHeight;
+        }
+    }
+
+    window.onload = function() {
+        connectSystemWS();
+    };
+</script>
+
+</body>
+</html>

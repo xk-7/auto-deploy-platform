@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Container Monitor</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style> body { padding: 30px; background-color: #f8f9fa; } </style>
+</head>
+<body>
+
+<div class="container">
+    <h1 class="mb-4">📦 容器状态监控</h1>
+
+    <table class="table table-bordered">
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Image</th>
+            <th>Status</th>
+            <th>Created</th>
+        </tr>
+        </thead>
+        <tbody id="container-table">
+        </tbody>
+    </table>
+</div>
+
+<script>
+    async function fetchContainers() {
+        let res = await fetch('/api/v1/containers');
+        let data = await res.json();
+        let tbody = document.getElementById("container-table");
+        tbody.innerHTML = "";
+        data.containers.forEach(c => {
+            let row = `<tr>
+        <td>${c.id}</td>
+        <td>${c.name}</td>
+        <td>${c.image}</td>
+        <td>${c.status}</td>
+        <td>${new Date(c.created * 1000).toLocaleString()}</td>
+      </tr>`;
+            tbody.innerHTML += row;
+        });
+    }
+
+    window.onload = function() {
+        fetchContainers();
+        setInterval(fetchContainers, 5000); // 每5秒刷新一次
+    };
+</script>
+
+</body>
+</html>
