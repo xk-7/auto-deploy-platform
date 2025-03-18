@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Container Logs</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { padding-top: 70px; background-color: #000; color: #0f0; }
+        #log { height: 90vh; overflow: auto; white-space: pre-wrap; }
+
+        .nav-link-custom {
+            font-weight: 500;
+            color: #aaa;
+            margin-left: 10px;
+            transition: all 0.3s ease-in-out;
+        }
+        .nav-link-custom:hover {
+            background-color: #333;
+            border-radius: 5px;
+            color: #fff;
+        }
+        .navbar-dark .navbar-nav .nav-link.active {
+            background-color: #0d6efd;
+            color: #fff !important;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm fixed-top">
+    <div class="container-fluid">
+        <a class="navbar-brand fw-bold" href="/">🚀 Auto Deploy</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <a class="nav-link nav-link-custom" href="/">📊 System Monitor</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link nav-link-custom active" href="/static/containers.html">📦 Containers</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link nav-link-custom" href="/static/containers-create.html">🚀 Deploy</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<div class="container mt-3">
+    <h4 class="text-success">📄 Container Logs</h4>
+    <div id="log">Connecting...</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const containerId = urlParams.get('id');
+    const logDiv = document.getElementById("log");
+
+    let ws = new WebSocket(`ws://${location.host}/api/v1/ws/container-logs/${containerId}`);
+
+    ws.onopen = function() {
+        logDiv.innerText = "Connected...\n";
+    };
+
+    ws.onmessage = function(event) {
+        logDiv.innerText += event.data;
+        logDiv.scrollTop = logDiv.scrollHeight;
+    };
+
+    ws.onclose = function() {
+        logDiv.innerText += "\nDisconnected.";
+    };
+</script>
+
+</body>
+</html>

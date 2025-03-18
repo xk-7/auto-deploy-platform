@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Deploy Container</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { padding-top: 70px; background-color: #f8f9fa; }
+
+        .nav-link-custom {
+            font-weight: 500;
+            color: #555;
+            margin-left: 10px;
+            transition: all 0.3s ease-in-out;
+        }
+        .nav-link-custom:hover {
+            background-color: #e2e6ea;
+            border-radius: 5px;
+            color: #000;
+        }
+        .navbar-light .navbar-nav .nav-link.active {
+            background-color: #0d6efd;
+            color: #fff !important;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm fixed-top">
+    <div class="container-fluid">
+        <a class="navbar-brand fw-bold" href="/">🚀 Auto Deploy</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <a class="nav-link nav-link-custom" href="/">📊 System Monitor</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link nav-link-custom" href="/static/containers.html">📦 Containers</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link nav-link-custom active" href="#">🚀 Deploy</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">📦 部署新容器</h4>
+                </div>
+                <div class="card-body">
+
+                    <form id="create-form">
+                        <div class="mb-3">
+                            <label class="form-label">镜像名 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="image" placeholder="如 nginx:latest" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">容器名称 (可选)</label>
+                            <input type="text" class="form-control" id="name" placeholder="不填自动生成">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">端口映射 (格式: 8080:80,443:443)</label>
+                            <input type="text" class="form-control" id="ports" placeholder="多个用英文逗号分隔">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">环境变量 (格式: KEY=VALUE,DEBUG=true)</label>
+                            <input type="text" class="form-control" id="env" placeholder="多个用英文逗号分隔">
+                        </div>
+
+                        <button type="button" class="btn btn-success w-100" onclick="createContainer()" id="create-btn">
+                            🚀 部署容器
+                        </button>
+
+                        <div id="status" class="mt-3 text-center"></div>
+                    </form>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    async function createContainer() {
+        const image = document.getElementById("image").value.trim();
+        const name = document.getElementById("name").value.trim();
+        const portsRaw = document.getElementById("ports").value.trim();
+        const envRaw = document.getElementById("env").value.trim();
+        const statusDiv = document.getElementById("status");
+        const createBtn = document.getElementById("create-btn");
+
+        if (!image) {
+            statusDiv.innerHTML = "<span class='text-danger'>⚠️ 镜像名不能为空</span>";
+            return;
+        }
+
+        const ports = portsRaw ? portsRaw.split(",") : [];
+        const env = envRaw ? envRaw.split(",") : [];
+
+        createBtn.disabled = true;
+        statusDiv.innerHTML = "⏳ 部署中，请稍等...";
+
+        let res = await fetch('/api/v1/container/create', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({image, name, ports, env})
+        });
+
+        let data = await res.json();
+        createBtn.disabled = false;
+
+        if (res.status === 200) {
+            statusDiv.innerHTML = `<span class='text-success'>✅ ${data.message} (ID: ${data.id})</span>`;
+            document.getElementById("create-form").reset();
+        } else {
+            statusDiv.innerHTML = `<span class='text-danger'>❌ 创建失败: ${data.error || data.detail}</span>`;
+        }
+    }
+</script>
+
+</body>
+</html>

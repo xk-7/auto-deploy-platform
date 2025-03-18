@@ -18,5 +18,7 @@ func RegisterRoutes(r *gin.Engine) {
 		v1.POST("/container/start/:id", controllers.StartContainer)
 		v1.POST("/container/stop/:id", controllers.StopContainer)
 		v1.GET("/ws/container-logs/:id", controllers.ContainerLogsWS)
+		v1.GET("/ws/container-stats/:id", controllers.ContainerStatsWS)
+		v1.POST("/container/create", controllers.CreateContainer)
 	}
 }

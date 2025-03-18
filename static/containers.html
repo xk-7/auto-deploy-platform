@@ -6,41 +6,69 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { padding: 30px; background-color: #f8f9fa; }
+        body { padding-top: 70px; background-color: #f8f9fa; }
+        .status-cell { white-space: nowrap; }
+
+        /* 导航栏美化 */
+        .nav-link-custom {
+            font-weight: 500;
+            color: #555;
+            margin-left: 10px;
+            transition: all 0.3s ease-in-out;
+        }
+
+        .nav-link-custom:hover {
+            background-color: #e2e6ea;
+            border-radius: 5px;
+            color: #000;
+        }
+
+        .navbar-light .navbar-nav .nav-link.active {
+            background-color: #0d6efd;
+            color: #fff !important;
+            border-radius: 5px;
+        }
     </style>
 </head>
 <body>
 
-<nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top">
+<!-- 导航栏 -->
+<nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm fixed-top">
     <div class="container-fluid">
-        <a class="navbar-brand" href="/">🚀 Auto Deploy Platform</a>
+        <a class="navbar-brand fw-bold" href="/">🚀 Auto Deploy</a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
             <span class="navbar-toggler-icon"></span>
         </button>
-        <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav ms-auto">
+        <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+            <ul class="navbar-nav">
                 <li class="nav-item">
-                    <a class="nav-link" href="/">System Monitor</a>
+                    <a class="nav-link nav-link-custom" id="monitor-link" href="/">📊 System Monitor</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link active" href="/static/containers.html">Containers</a>
+                    <a class="nav-link nav-link-custom active" id="containers-link" href="/static/containers.html">📦 Containers</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link nav-link-custom" id="deploy-link" href="/static/containers-create.html">🚀 Deploy</a>
                 </li>
             </ul>
         </div>
     </div>
 </nav>
 
-<div class="container mt-5">
+<!-- 页面主体 -->
+<div class="container">
     <h1 class="mb-4">📦 容器状态监控</h1>
 
-    <table class="table table-bordered">
-        <thead>
+    <table class="table table-bordered align-middle text-center">
+        <thead class="table-light">
         <tr>
             <th>ID</th>
             <th>Name</th>
             <th>Image</th>
             <th>Status</th>
             <th>Created</th>
+            <th>CPU</th>
+            <th>Memory</th>
             <th>Actions</th>
         </tr>
         </thead>
@@ -64,13 +92,16 @@
         <td>${c.image}</td>
         <td>${c.status}</td>
         <td>${new Date(c.created * 1000).toLocaleString()}</td>
+        <td class="status-cell"><span id="cpu-${c.id}">--%</span></td>
+        <td class="status-cell"><span id="mem-${c.id}">--</span></td>
         <td>
-          <button class="btn btn-sm btn-success" onclick="startContainer('${c.id}')">Start</button>
-          <button class="btn btn-sm btn-danger" onclick="stopContainer('${c.id}')">Stop</button>
-          <button class="btn btn-sm btn-info" onclick="showLogs('${c.id}')">Logs</button>
+          <button class="btn btn-sm btn-success m-1" onclick="startContainer('${c.id}')">Start</button>
+          <button class="btn btn-sm btn-danger m-1" onclick="stopContainer('${c.id}')">Stop</button>
+          <button class="btn btn-sm btn-info m-1" onclick="showLogs('${c.id}')">Logs</button>
         </td>
       </tr>`;
             tbody.innerHTML += row;
+            monitorContainer(c.id);  // 启动监控
         });
     }
 
@@ -85,16 +116,19 @@
     }
 
     function showLogs(id) {
-        let logWin = window.open("", "_blank");
-        logWin.document.write(`<pre id="log">Connecting...</pre>`);
+        window.open(`/static/container-logs.html?id=${id}`, '_blank');
+    }
 
-        let ws = new WebSocket(`ws://13.212.44.45:8081/api/v1/ws/container-logs/${id}`);
+    function monitorContainer(id) {
+        let ws = new WebSocket(`ws://${location.host}/api/v1/ws/container-stats/${id}`);
         ws.onmessage = function(event) {
-            logWin.document.getElementById("log").innerText += event.data;
-            logWin.document.getElementById("log").scrollTop = logWin.document.getElementById("log").scrollHeight;
+            let data = JSON.parse(event.data);
+            document.getElementById(`cpu-${id}`).innerText = data.cpu_percent.toFixed(2) + '%';
+            document.getElementById(`mem-${id}`).innerText = data.memory_usage + '/' + data.memory_limit + ' MB';
         };
     }
 
+    // 初始加载
     window.onload = function() {
         fetchContainers();
         setInterval(fetchContainers, 5000);
