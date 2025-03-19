@@ -53,10 +53,22 @@
     </div>
 </nav>
 
-<!-- 页面主体 -->
+<!-- 主体 -->
 <div class="container mt-4">
     <h1 class="mb-4">📦 容器列表</h1>
 
+    <!-- 服务器选择 -->
+    <div class="mb-3">
+        <label class="form-label">选择服务器</label>
+        <select id="host-select" class="form-select" onchange="loadContainers()">
+            <!-- 动态加载 -->
+        </select>
+    </div>
+
+    <!-- 状态提示 -->
+    <div id="status-msg" class="mb-3 text-center fw-bold"></div>
+
+    <!-- 容器表 -->
     <table class="table table-hover text-center">
         <thead class="table-light">
         <tr>
@@ -73,71 +85,119 @@
     </table>
 </div>
 
+<!-- 停止容器确认 Modal -->
+<div class="modal fade" id="stopConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content text-center">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title">⚠️ 确认操作</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>确定要停止该容器吗？</p>
+                <button class="btn btn-danger" id="confirmStopBtn">确认停止</button>
+                <button class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-<!-- 配置加载 -->
 <script>
     let CONFIG = {};
+    let stopTargetId = "";
 
+    // 加载 config
     async function loadConfig() {
-        try {
-            let res = await fetch('/static/config.json');
-            CONFIG = await res.json();
-            console.log("✅ Config loaded:", CONFIG);
-        } catch (err) {
-            alert("❌ 配置文件加载失败！");
-        }
+        let res = await fetch('/static/config.json');
+        CONFIG = await res.json();
     }
-</script>
 
-<script>
+    // 加载服务器列表
+    async function loadServers() {
+        let res = await fetch('/static/servers.json');
+        let servers = await res.json();
+        let select = document.getElementById("host-select");
+        select.innerHTML = "";
+        servers.forEach(s => {
+            let option = document.createElement("option");
+            option.value = s.host;
+            option.innerText = s.name;
+            select.appendChild(option);
+        });
+        select.selectedIndex = 0;
+    }
+
+    // 加载容器列表
     async function loadContainers() {
-        try {
-            const res = await fetch(`${CONFIG.apiBaseUrl}/containers`);
-            const data = await res.json();
+        const host = document.getElementById("host-select").value;
+        const tableBody = document.getElementById("container-list");
+        tableBody.innerHTML = `<tr><td colspan="5">加载中...</td></tr>`;
 
-            const tableBody = document.getElementById("container-list");
-            tableBody.innerHTML = "";
+        let url = `${CONFIG.apiBaseUrl}/containers`;
+        if (host) url += `?host=${host}`;
 
-            data.containers.forEach(container => {
-                let row = `<tr>
-        <td>${container.id}</td>
-        <td>${container.name}</td>
-        <td>${container.image}</td>
-        <td>
-          <span class="badge ${container.status.includes('Up') ? 'badge-running' : 'badge-stopped'}">
-            ${container.status}
-          </span>
-        </td>
-        <td>
-          ${container.status.includes('Up') ?
-                    `<button class="btn btn-danger btn-sm" onclick="stopContainer('${container.id}')">Stop</button>` :
-                    `<button class="btn btn-success btn-sm" onclick="startContainer('${container.id}')">Start</button>`}
-          <a class="btn btn-secondary btn-sm" href="/static/container-logs.html?id=${container.id}">Logs</a>
-        </td>
-      </tr>`;
-                tableBody.innerHTML += row;
-            });
+        let res = await fetch(url);
+        let data = await res.json();
+        tableBody.innerHTML = "";
 
-        } catch (err) {
-            document.getElementById("container-list").innerHTML = `<tr><td colspan="5" class="text-danger">加载失败: ${err.message}</td></tr>`;
-        }
+        data.containers.forEach(container => {
+            let logUrl = `/static/container-logs.html?id=${container.id}`;
+            if (host) logUrl += `&host=${host}`;
+
+            let row = `<tr>
+      <td>${container.id}</td>
+      <td>${container.name}</td>
+      <td>${container.image}</td>
+      <td>
+        <span class="badge ${container.status.includes('Up') ? 'badge-running' : 'badge-stopped'}">
+          ${container.status}
+        </span>
+      </td>
+      <td>
+        ${container.status.includes('Up') ?
+                `<button class="btn btn-danger btn-sm" onclick="stopContainer('${container.id}')">Stop</button>` :
+                `<button class="btn btn-success btn-sm" onclick="startContainer('${container.id}')">Start</button>`}
+        <a class="btn btn-secondary btn-sm" href="${logUrl}">Logs</a>
+      </td>
+    </tr>`;
+            tableBody.innerHTML += row;
+        });
     }
 
+    // 启动容器
     async function startContainer(id) {
-        if (!confirm("确定启动该容器？")) return;
-        await fetch(`${CONFIG.apiBaseUrl}/container/start/${id}`, { method: "POST" });
+        const host = document.getElementById("host-select").value;
+        let url = `${CONFIG.apiBaseUrl}/container/start/${id}`;
+        if (host) url += `?host=${host}`;
+        await fetch(url, { method: "POST" });
         loadContainers();
     }
 
-    async function stopContainer(id) {
-        if (!confirm("确定停止该容器？")) return;
-        await fetch(`${CONFIG.apiBaseUrl}/container/stop/${id}`, { method: "POST" });
-        loadContainers();
+    // 停止容器
+    function stopContainer(id) {
+        stopTargetId = id;
+        let modal = new bootstrap.Modal(document.getElementById('stopConfirmModal'));
+        modal.show();
     }
 
+    // 确认停止
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById("confirmStopBtn").onclick = async function() {
+            const host = document.getElementById("host-select").value;
+            let url = `${CONFIG.apiBaseUrl}/container/stop/${stopTargetId}`;
+            if (host) url += `?host=${host}`;
+            await fetch(url, { method: "POST" });
+            bootstrap.Modal.getInstance(document.getElementById('stopConfirmModal')).hide();
+            loadContainers();
+        };
+    });
+
+    // 初始化
     window.onload = async function() {
         await loadConfig();
+        await loadServers();
         await loadContainers();
     };
 </script>
