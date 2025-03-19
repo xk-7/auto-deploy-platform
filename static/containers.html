@@ -2,32 +2,30 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Container Monitor</title>
+    <title>Containers</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { padding-top: 70px; background-color: #f8f9fa; }
-        .status-cell { white-space: nowrap; }
-
-        /* 导航栏美化 */
         .nav-link-custom {
             font-weight: 500;
             color: #555;
             margin-left: 10px;
             transition: all 0.3s ease-in-out;
         }
-
         .nav-link-custom:hover {
             background-color: #e2e6ea;
             border-radius: 5px;
             color: #000;
         }
-
         .navbar-light .navbar-nav .nav-link.active {
             background-color: #0d6efd;
             color: #fff !important;
             border-radius: 5px;
         }
+        .badge-running { background-color: #28a745; }
+        .badge-stopped { background-color: #dc3545; }
+        .btn-sm { margin-right: 5px; }
     </style>
 </head>
 <body>
@@ -42,13 +40,13 @@
         <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
             <ul class="navbar-nav">
                 <li class="nav-item">
-                    <a class="nav-link nav-link-custom" id="monitor-link" href="/">📊 System Monitor</a>
+                    <a class="nav-link nav-link-custom" href="/">📊 System Monitor</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link nav-link-custom active" id="containers-link" href="/static/containers.html">📦 Containers</a>
+                    <a class="nav-link nav-link-custom active" href="/static/containers.html">📦 Containers</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link nav-link-custom" id="deploy-link" href="/static/containers-create.html">🚀 Deploy</a>
+                    <a class="nav-link nav-link-custom" href="/static/containers-create.html">🚀 Deploy</a>
                 </li>
             </ul>
         </div>
@@ -56,82 +54,91 @@
 </nav>
 
 <!-- 页面主体 -->
-<div class="container">
-    <h1 class="mb-4">📦 容器状态监控</h1>
+<div class="container mt-4">
+    <h1 class="mb-4">📦 容器列表</h1>
 
-    <table class="table table-bordered align-middle text-center">
+    <table class="table table-hover text-center">
         <thead class="table-light">
         <tr>
             <th>ID</th>
-            <th>Name</th>
-            <th>Image</th>
-            <th>Status</th>
-            <th>Created</th>
-            <th>CPU</th>
-            <th>Memory</th>
-            <th>Actions</th>
+            <th>名称</th>
+            <th>镜像</th>
+            <th>状态</th>
+            <th>操作</th>
         </tr>
         </thead>
-        <tbody id="container-table">
+        <tbody id="container-list">
+        <tr><td colspan="5">加载中...</td></tr>
         </tbody>
     </table>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
+<!-- 配置加载 -->
 <script>
-    async function fetchContainers() {
-        let res = await fetch('/api/v1/containers');
-        let data = await res.json();
-        let tbody = document.getElementById("container-table");
-        tbody.innerHTML = "";
-        data.containers.forEach(c => {
-            let row = `<tr>
-        <td>${c.id}</td>
-        <td>${c.name}</td>
-        <td>${c.image}</td>
-        <td>${c.status}</td>
-        <td>${new Date(c.created * 1000).toLocaleString()}</td>
-        <td class="status-cell"><span id="cpu-${c.id}">--%</span></td>
-        <td class="status-cell"><span id="mem-${c.id}">--</span></td>
+    let CONFIG = {};
+
+    async function loadConfig() {
+        try {
+            let res = await fetch('/static/config.json');
+            CONFIG = await res.json();
+            console.log("✅ Config loaded:", CONFIG);
+        } catch (err) {
+            alert("❌ 配置文件加载失败！");
+        }
+    }
+</script>
+
+<script>
+    async function loadContainers() {
+        try {
+            const res = await fetch(`${CONFIG.apiBaseUrl}/containers`);
+            const data = await res.json();
+
+            const tableBody = document.getElementById("container-list");
+            tableBody.innerHTML = "";
+
+            data.containers.forEach(container => {
+                let row = `<tr>
+        <td>${container.id}</td>
+        <td>${container.name}</td>
+        <td>${container.image}</td>
         <td>
-          <button class="btn btn-sm btn-success m-1" onclick="startContainer('${c.id}')">Start</button>
-          <button class="btn btn-sm btn-danger m-1" onclick="stopContainer('${c.id}')">Stop</button>
-          <button class="btn btn-sm btn-info m-1" onclick="showLogs('${c.id}')">Logs</button>
+          <span class="badge ${container.status.includes('Up') ? 'badge-running' : 'badge-stopped'}">
+            ${container.status}
+          </span>
+        </td>
+        <td>
+          ${container.status.includes('Up') ?
+                    `<button class="btn btn-danger btn-sm" onclick="stopContainer('${container.id}')">Stop</button>` :
+                    `<button class="btn btn-success btn-sm" onclick="startContainer('${container.id}')">Start</button>`}
+          <a class="btn btn-secondary btn-sm" href="/static/container-logs.html?id=${container.id}">Logs</a>
         </td>
       </tr>`;
-            tbody.innerHTML += row;
-            monitorContainer(c.id);  // 启动监控
-        });
+                tableBody.innerHTML += row;
+            });
+
+        } catch (err) {
+            document.getElementById("container-list").innerHTML = `<tr><td colspan="5" class="text-danger">加载失败: ${err.message}</td></tr>`;
+        }
     }
 
     async function startContainer(id) {
-        await fetch(`/api/v1/container/start/${id}`, {method: 'POST'});
-        fetchContainers();
+        if (!confirm("确定启动该容器？")) return;
+        await fetch(`${CONFIG.apiBaseUrl}/container/start/${id}`, { method: "POST" });
+        loadContainers();
     }
 
     async function stopContainer(id) {
-        await fetch(`/api/v1/container/stop/${id}`, {method: 'POST'});
-        fetchContainers();
+        if (!confirm("确定停止该容器？")) return;
+        await fetch(`${CONFIG.apiBaseUrl}/container/stop/${id}`, { method: "POST" });
+        loadContainers();
     }
 
-    function showLogs(id) {
-        window.open(`/static/container-logs.html?id=${id}`, '_blank');
-    }
-
-    function monitorContainer(id) {
-        let ws = new WebSocket(`ws://${location.host}/api/v1/ws/container-stats/${id}`);
-        ws.onmessage = function(event) {
-            let data = JSON.parse(event.data);
-            document.getElementById(`cpu-${id}`).innerText = data.cpu_percent.toFixed(2) + '%';
-            document.getElementById(`mem-${id}`).innerText = data.memory_usage + '/' + data.memory_limit + ' MB';
-        };
-    }
-
-    // 初始加载
-    window.onload = function() {
-        fetchContainers();
-        setInterval(fetchContainers, 5000);
+    window.onload = async function() {
+        await loadConfig();
+        await loadContainers();
     };
 </script>
 

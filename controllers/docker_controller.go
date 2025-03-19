@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"log"
 	"net/http"
 	"strings"
@@ -220,10 +221,15 @@ func calculateCPUPercentUnix(v *types.StatsJSON) float64 {
 
 // ---------------- 容器创建 API -------------------
 type CreateContainerRequest struct {
-	Name  string   `json:"name"`
-	Image string   `json:"image"`
-	Ports []string `json:"ports"` // ["8080:80"]
-	Env   []string `json:"env"`   // ["ENV=prod"]
+	Name          string   `json:"name"`
+	Image         string   `json:"image"`
+	Ports         []string `json:"ports"`          // ["8080:80"]
+	Env           []string `json:"env"`            // ["ENV=prod"]
+	Volumes       []string `json:"volumes"`        // ["/host/path:/container/path"]
+	CPUQuota      int64    `json:"cpu_quota"`      // e.g. 50000 = 50% CPU
+	MemoryMB      int64    `json:"memory_mb"`      // 单位 MB
+	RestartPolicy string   `json:"restart_policy"` // always, no, unless-stopped
+	NetworkMode   string   `json:"network_mode"`   // bridge, host, none
 }
 
 func CreateContainer(c *gin.Context) {
@@ -238,19 +244,24 @@ func CreateContainer(c *gin.Context) {
 		return
 	}
 
-	// 容器名默认自动生成
-	containerName := req.Name
-	if containerName == "" {
-		containerName = "auto-" + time.Now().Format("20060102150405")
-	}
-
 	cli, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Docker client init failed"})
 		return
 	}
 
-	// 端口映射处理
+	// --- 1️⃣ 自动补全 tag ---
+	if !strings.Contains(req.Image, ":") {
+		req.Image = req.Image + ":latest"
+	}
+
+	// --- 2️⃣ 自动生成容器名 ---
+	containerName := req.Name
+	if containerName == "" {
+		containerName = "auto-" + time.Now().Format("20060102150405")
+	}
+
+	// --- 3️⃣ 端口映射 ---
 	portBindings := nat.PortMap{}
 	exposedPorts := nat.PortSet{}
 	for _, p := range req.Ports {
@@ -273,27 +284,85 @@ func CreateContainer(c *gin.Context) {
 		}
 	}
 
-	// 环境变量处理
-	var envList []string
+	// --- 4️⃣ Volume 挂载 ---
+	binds := []string{}
+	for _, v := range req.Volumes {
+		if v != "" && strings.Contains(v, ":") {
+			binds = append(binds, v)
+		}
+	}
+
+	// --- 5️⃣ 环境变量 ---
+	envList := []string{}
 	for _, e := range req.Env {
 		if e != "" {
 			envList = append(envList, e)
 		}
 	}
 
+	// --- 6️⃣ 镜像检查 & 拉取 ---
+	_, _, imgErr := cli.ImageInspectWithRaw(context.Background(), req.Image)
+	if imgErr != nil {
+		log.Printf("Image not found locally, pulling: %s", req.Image)
+
+		out, err := cli.ImagePull(context.Background(), req.Image, types.ImagePullOptions{
+			All: false,
+		})
+		if err != nil {
+			log.Printf("ImagePull failed: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to pull image", "detail": err.Error()})
+			return
+		}
+		defer out.Close()
+
+		io.Copy(io.Discard, out) // 等待拉取完成
+		log.Printf("Image pulled successfully: %s", req.Image)
+	}
+
+	// --- 7️⃣ HostConfig ---
+	hostConfig := &container.HostConfig{
+		PortBindings: portBindings,
+		Binds:        binds,
+	}
+
+	// CPU 限制
+	if req.CPUQuota > 0 {
+		hostConfig.CPUQuota = req.CPUQuota
+	}
+
+	// 内存限制
+	if req.MemoryMB > 0 {
+		hostConfig.Memory = req.MemoryMB * 1024 * 1024
+	}
+
+	// 重启策略
+	if req.RestartPolicy != "" {
+		hostConfig.RestartPolicy = container.RestartPolicy{Name: req.RestartPolicy}
+	}
+
+	// 网络模式
+	if req.NetworkMode != "" {
+		hostConfig.NetworkMode = container.NetworkMode(req.NetworkMode)
+	}
+
+	// --- 8️⃣ 创建容器 ---
 	resp, err := cli.ContainerCreate(context.Background(), &container.Config{
 		Image:        req.Image,
 		Env:          envList,
 		ExposedPorts: exposedPorts,
-	}, &container.HostConfig{
-		PortBindings: portBindings,
-	}, &network.NetworkingConfig{}, nil, containerName)
+	}, hostConfig, &network.NetworkingConfig{}, nil, containerName)
+
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Create failed", "detail": err.Error()})
 		return
 	}
 
-	cli.ContainerStart(context.Background(), resp.ID, types.ContainerStartOptions{})
+	// --- 9️⃣ 启动容器 ---
+	err = cli.ContainerStart(context.Background(), resp.ID, types.ContainerStartOptions{})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to start container", "detail": err.Error()})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Container created", "id": resp.ID[:12]})
 }
