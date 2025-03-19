@@ -53,18 +53,33 @@
 </nav>
 
 <!-- 页面主体 -->
-<div class="container mt-4">
-    <h1 class="mb-4">📊 系统状态监控</h1>
+<div class="card mb-4">
+    <div class="card-header">📊 实时系统监控</div>
+    <div class="card-body">
 
-    <div class="card mb-4">
-        <div class="card-header">实时系统状态 (WebSocket)</div>
-        <div class="card-body">
-            <p><strong>Uptime:</strong> <span id="uptime">--</span></p>
-            <p><strong>CPU 使用率:</strong> <span id="cpu">--%</span></p>
-            <p><strong>内存:</strong> <span id="memory">-- / -- MB</span></p>
-            <p><strong>磁盘:</strong> <span id="disk">-- / -- MB</span></p>
+        <p><strong>Uptime:</strong> <span id="uptime">--</span></p>
+        <p><strong>Load Average:</strong> <span id="load">--</span></p>
+
+        <p class="mb-1"><strong>CPU 使用率:</strong> <span id="cpu">--%</span></p>
+        <div class="progress mb-3">
+            <div id="cpu-bar" class="progress-bar bg-info" role="progressbar" style="width: 0%"></div>
         </div>
+
+        <p class="mb-1"><strong>内存:</strong> <span id="memory">-- / -- GB</span></p>
+        <div class="progress mb-3">
+            <div id="memory-bar" class="progress-bar bg-warning" role="progressbar" style="width: 0%"></div>
+        </div>
+
+        <p class="mb-1"><strong>磁盘:</strong> <span id="disk">-- / -- GB</span></p>
+        <div class="progress">
+            <div id="disk-bar" class="progress-bar bg-success" role="progressbar" style="width: 0%"></div>
+        </div>
+
     </div>
+</div>
+
+
+
 
     <div class="card mb-4">
         <div class="card-header">📜 执行 Ansible Playbook</div>
@@ -105,10 +120,28 @@
             let data = JSON.parse(event.data);
 
             document.getElementById("uptime").innerText = data.uptime.trim();
-            document.getElementById("cpu").innerText = data.cpu_usage.toFixed(2) + "%";
-            document.getElementById("memory").innerText = data.memory_used + " / " + data.memory_total + " MB";
-            document.getElementById("disk").innerText = data.disk_used + " / " + data.disk_total + " MB";
+            document.getElementById("load").innerText = data.load_average || "--";
+
+            // CPU
+            let cpuPercent = data.cpu_usage.toFixed(2);
+            document.getElementById("cpu").innerText = cpuPercent + "%";
+            document.getElementById("cpu-bar").style.width = cpuPercent + "%";
+
+            // 内存
+            let memUsed = (data.memory_used / 1024).toFixed(1);
+            let memTotal = (data.memory_total / 1024).toFixed(1);
+            let memPercent = ((data.memory_used / data.memory_total) * 100).toFixed(1);
+            document.getElementById("memory").innerText = `${memUsed} / ${memTotal} GB`;
+            document.getElementById("memory-bar").style.width = memPercent + "%";
+
+            // 磁盘
+            let diskUsed = (data.disk_used / 1024).toFixed(1);
+            let diskTotal = (data.disk_total / 1024).toFixed(1);
+            let diskPercent = ((data.disk_used / data.disk_total) * 100).toFixed(1);
+            document.getElementById("disk").innerText = `${diskUsed} / ${diskTotal} GB`;
+            document.getElementById("disk-bar").style.width = diskPercent + "%";
         };
+
 
         ws.onclose = function() {
             console.log("WebSocket Closed, reconnecting...");
