@@ -96,7 +96,7 @@
 ## 🚀 快速启动
 
 ```
-git clone https://github.com/xxx/auto-deploy-platform.git
+git clone https://github.com/xk-7/auto-deploy-platform.git
 cd auto-deploy-platform
 
 go mod tidy
