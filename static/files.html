@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>File Manager</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding-top: 70px;
+            background-color: #f0f2f5;
+        }
+        .nav-link-custom {
+            font-weight: 500;
+            color: #555;
+            margin-left: 10px;
+            transition: all 0.3s ease;
+        }
+        .nav-link-custom:hover {
+            background-color: #e9ecef;
+            border-radius: 5px;
+            color: #000;
+        }
+        .navbar-light .navbar-nav .nav-link.active {
+            background-color: #0d6efd;
+            color: #fff !important;
+            border-radius: 5px;
+        }
+        .file-icon {
+            margin-right: 8px;
+            font-size: 1.1rem;
+        }
+        .breadcrumb {
+            background-color: #fff;
+            border-radius: .5rem;
+            padding: 10px 15px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.05);
+        }
+        .breadcrumb a { text-decoration: none; }
+        .table thead th { vertical-align: middle; }
+        .table tbody td { vertical-align: middle; }
+        .table-hover tbody tr:hover { background-color: #f9fafb; }
+        .btn-sm { min-width: 90px; }
+        .search-group {
+            position: relative;
+            width: 300px;
+        }
+        .search-group i {
+            position: absolute;
+            top: 50%;
+            left: 10px;
+            transform: translateY(-50%);
+            color: #888;
+        }
+        #path-input {
+            padding-left: 30px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm fixed-top">
+    <div class="container-fluid">
+        <a class="navbar-brand fw-bold" href="/">🚀 Auto Deploy</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+            <ul class="navbar-nav">
+                <li class="nav-item"><a class="nav-link nav-link-custom" href="/">📊 System Monitor</a></li>
+                <li class="nav-item"><a class="nav-link nav-link-custom" href="/static/containers.html">📦 Containers</a></li>
+                <li class="nav-item"><a class="nav-link nav-link-custom" href="/static/containers-create.html">🚀 Deploy</a></li>
+                <li class="nav-item"><a class="nav-link nav-link-custom" href="/static/compose.html">🧩 Compose</a></li>
+                <li class="nav-item"><a class="nav-link nav-link-custom active" href="/static/files.html">📂 File Manager</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<!-- Main -->
+<div class="container mt-4">
+    <h1 class="mb-3">📂 文件管理</h1>
+
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb" id="breadcrumb"></ol>
+    </nav>
+
+    <!-- Actions -->
+    <div class="mb-3 d-flex flex-wrap align-items-center">
+        <button class="btn btn-success btn-sm me-2 mb-2" onclick="openUpload()"><i class="fas fa-upload me-1"></i> 上传</button>
+        <button class="btn btn-secondary btn-sm me-2 mb-2" onclick="openMkdir()"><i class="fas fa-folder-plus me-1"></i> 新建文件夹</button>
+
+        <div class="search-group me-2 mb-2">
+            <i class="fas fa-search"></i>
+            <input type="text" id="path-input" placeholder="输入路径跳转" class="form-control form-control-sm" onkeydown="handleKey(event)">
+        </div>
+        <button class="btn btn-outline-primary btn-sm me-2 mb-2" onclick="jumpPath()">跳转</button>
+        <button class="btn btn-outline-warning btn-sm mb-2" onclick="loadFiles('')">回到默认目录</button>
+    </div>
+
+    <!-- File Table -->
+    <div class="table-responsive shadow-sm rounded">
+        <table class="table table-hover text-center align-middle">
+            <thead class="table-light">
+            <tr>
+                <th>名称</th><th>权限</th><th>大小</th><th>修改时间</th><th>操作</th>
+            </tr>
+            </thead>
+            <tbody id="file-list">
+            <tr><td colspan="5">加载中...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Upload Modal -->
+<div class="modal fade" id="uploadModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">上传文件</h5></div>
+            <div class="modal-body">
+                <input type="file" id="upload-file" class="form-control mb-3">
+                <button class="btn btn-success w-100" onclick="doUpload()">上传</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Mkdir Modal -->
+<div class="modal fade" id="mkdirModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">新建文件夹</h5></div>
+            <div class="modal-body">
+                <input type="text" id="mkdir-name" class="form-control mb-3" placeholder="文件夹名称">
+                <button class="btn btn-primary w-100" onclick="doMkdir()">创建</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+
+<script>
+    let CONFIG = {};
+    let currentPath = "";
+
+    async function loadConfig() {
+        let res = await fetch('/static/config.json');
+        CONFIG = await res.json();
+    }
+
+    async function loadFiles(path = "") {
+        let url = `${CONFIG.apiBaseUrl}/files/list`;
+        if (path) url += `?path=${encodeURIComponent(path)}`;
+
+        const res = await fetch(url);
+        const data = await res.json();
+
+        const table = document.getElementById("file-list");
+        table.innerHTML = "";
+
+        currentPath = data.current;
+        document.getElementById("path-input").value = currentPath;
+        updateBreadcrumb();
+
+        if (currentPath !== CONFIG.baseDir) {
+            table.innerHTML += `<tr>
+                <td><a href="javascript:void(0)" onclick="goUp()"><i class="fas fa-level-up-alt me-1"></i> 上一级</a></td>
+                <td>-</td><td>-</td><td>-</td><td>-</td>
+            </tr>`;
+        }
+
+        data.files.forEach(file => {
+            let icon = file.is_dir ? `<i class="fas fa-folder file-icon text-warning"></i>` : `<i class="fas fa-file file-icon text-secondary"></i>`;
+            let action = file.is_dir ?
+                `<button class="btn btn-outline-primary btn-sm me-1" onclick="enterDir('${file.name}')">打开</button>` :
+                `<button class="btn btn-success btn-sm me-1" onclick="downloadFile('${file.name}')">下载</button>`;
+            action += `<button class="btn btn-danger btn-sm" onclick="deleteFile('${file.name}')">删除</button>`;
+            table.innerHTML += `<tr>
+                <td>${icon} ${file.name}</td>
+                <td>${file.mode}</td>
+                <td>${file.is_dir ? "-" : formatSize(file.size)}</td>
+                <td>${file.mod_time}</td>
+                <td>${action}</td>
+            </tr>`;
+        });
+    }
+
+    function formatSize(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        let kb = bytes / 1024;
+        if (kb < 1024) return kb.toFixed(1) + ' KB';
+        let mb = kb / 1024;
+        return mb.toFixed(1) + ' MB';
+    }
+
+    function enterDir(name) {
+        let next = currentPath.endsWith("/") ? currentPath + name : currentPath + "/" + name;
+        loadFiles(next);
+    }
+
+    function goUp() {
+        let parts = currentPath.split("/");
+        parts.pop();
+        loadFiles(parts.join("/"));
+    }
+
+    async function deleteFile(name) {
+        if (!confirm(`确认删除 ${name} 吗？`)) return;
+        await fetch(`${CONFIG.apiBaseUrl}/files/delete`, {
+            method: "POST",
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({path: currentPath, name})
+        });
+        loadFiles(currentPath);
+    }
+
+    function downloadFile(name) {
+        let url = `${CONFIG.apiBaseUrl}/files/download?path=${encodeURIComponent(currentPath + "/" + name)}`;
+        window.open(url, "_blank");
+    }
+
+    function openUpload() {
+        let modal = new bootstrap.Modal(document.getElementById('uploadModal'));
+        modal.show();
+    }
+
+    async function doUpload() {
+        let fileInput = document.getElementById("upload-file");
+        let file = fileInput.files[0];
+        if (!file) return;
+        let formData = new FormData();
+        formData.append("file", file);
+        formData.append("path", currentPath);
+        await fetch(`${CONFIG.apiBaseUrl}/files/upload`, {method: "POST", body: formData});
+        bootstrap.Modal.getInstance(document.getElementById('uploadModal')).hide();
+        loadFiles(currentPath);
+    }
+
+    function openMkdir() {
+        let modal = new bootstrap.Modal(document.getElementById('mkdirModal'));
+        modal.show();
+    }
+
+    async function doMkdir() {
+        let name = document.getElementById("mkdir-name").value.trim();
+        if (!name) return;
+        await fetch(`${CONFIG.apiBaseUrl}/files/mkdir`, {
+            method: "POST",
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({path: currentPath, name})
+        });
+        bootstrap.Modal.getInstance(document.getElementById('mkdirModal')).hide();
+        loadFiles(currentPath);
+    }
+
+    function jumpPath() {
+        let p = document.getElementById("path-input").value.trim();
+        loadFiles(p);
+    }
+
+    function handleKey(event) {
+        if (event.key === 'Enter') {
+            jumpPath();
+        }
+    }
+
+    function updateBreadcrumb() {
+        const breadcrumb = document.getElementById("breadcrumb");
+        breadcrumb.innerHTML = `<li class="breadcrumb-item"><a href="javascript:void(0)" onclick="loadFiles('')">🏠 Root</a></li>`;
+        let relative = currentPath.replace(CONFIG.baseDir, "");
+        if (relative.startsWith("/")) relative = relative.substring(1);
+        if (relative) {
+            let parts = relative.split("/");
+            let path = CONFIG.baseDir;
+            parts.forEach((p) => {
+                path += "/" + p;
+                breadcrumb.innerHTML += `<li class="breadcrumb-item">
+                    <a href="javascript:void(0)" onclick="loadFiles('${path}')">${p}</a>
+                </li>`;
+            });
+        }
+    }
+
+    window.onload = async function() {
+        await loadConfig();
+        await loadFiles();
+    }
+</script>
+
+</body>
+</html>

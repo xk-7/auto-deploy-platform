@@ -28,5 +28,13 @@ func RegisterRoutes(r *gin.Engine) {
 		v1.POST("/compose/down", controllers.StopCompose)
 		v1.POST("/compose/delete", controllers.DeleteCompose)
 		v1.GET("/ws/compose-logs", controllers.ComposeLogsWS)
+
+		// 🧩 文件管理
+		v1.GET("/files/list", controllers.ListFiles)
+		v1.POST("/files/upload", controllers.UploadFile)
+		v1.POST("/files/delete", controllers.DeleteFile)
+		v1.POST("/files/mkdir", controllers.Mkdir)
+		v1.GET("/files/download", controllers.DownloadFile)
+
 	}
 }

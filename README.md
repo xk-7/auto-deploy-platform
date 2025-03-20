@@ -68,7 +68,7 @@
 ## 📄 配置文件结构 (config.json)
 
 ```
-json复制编辑{
+{
   "apiBaseUrl": "/api/v1",
   "wsBaseUrl": "ws://localhost:8081/api/v1",
   "dockerHosts": [
@@ -96,7 +96,7 @@ json复制编辑{
 ## 🚀 快速启动
 
 ```
-bash复制编辑git clone https://github.com/xxx/auto-deploy-platform.git
+git clone https://github.com/xxx/auto-deploy-platform.git
 cd auto-deploy-platform
 
 go mod tidy
@@ -106,10 +106,6 @@ go run cmd/server/main.go
 访问：
 
 ```
-arduino
-
-
-复制编辑
 http://localhost:8081
 ```
 
@@ -118,7 +114,7 @@ http://localhost:8081
 ## 📁 目录结构
 
 ```
-go复制编辑├── cmd/server/main.go      // 入口
+├── cmd/server/main.go      // 入口
 ├── controllers             // API 控制器
 │   ├── docker_controller.go
 │   ├── compose_controller.go
