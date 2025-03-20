@@ -2,46 +2,26 @@ package controllers
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/network"
+	"github.com/docker/go-connections/nat"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
-	"github.com/docker/go-connections/nat"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 )
 
-// 获取 Docker client（动态 host）
-func getDockerClient(c *gin.Context) (*client.Client, error) {
-	hostIP := c.Query("host")
-
-	var cli *client.Client
-	var err error
-
-	if hostIP == "" {
-		cli, err = client.NewClientWithOpts(client.FromEnv) // 默认本机
-	} else {
-		dockerURL := fmt.Sprintf("tcp://%s:2375", hostIP)
-		cli, err = client.NewClientWithOpts(
-			client.WithHost(dockerURL),
-			client.WithAPIVersionNegotiation(),
-		)
-	}
-	return cli, err
-}
-
 // ------------------- 容器列表 -------------------
 func ListContainers(c *gin.Context) {
-	cli, err := getDockerClient(c)
+	cli, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Docker client init failed"})
 		return
 	}
 
@@ -67,13 +47,12 @@ func ListContainers(c *gin.Context) {
 
 // ------------------- Start 容器 -------------------
 func StartContainer(c *gin.Context) {
-	cli, err := getDockerClient(c)
+	containerID := c.Param("id")
+	cli, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Docker client init failed"})
 		return
 	}
-
-	containerID := c.Param("id")
 
 	if err := cli.ContainerStart(context.Background(), containerID, types.ContainerStartOptions{}); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to start container"})
@@ -85,13 +64,13 @@ func StartContainer(c *gin.Context) {
 
 // ------------------- Stop 容器 -------------------
 func StopContainer(c *gin.Context) {
-	cli, err := getDockerClient(c)
+	containerID := c.Param("id")
+	cli, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Docker client init failed"})
 		return
 	}
 
-	containerID := c.Param("id")
 	timeout := 10 * time.Second
 	if err := cli.ContainerStop(context.Background(), containerID, &timeout); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to stop container"})
@@ -101,133 +80,96 @@ func StopContainer(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Container stopped"})
 }
 
-// ------------------- 容器 Stats 实时推送 -------------------
-func ContainerStatsWS(c *gin.Context) {
-	cli, err := getDockerClient(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	containerID := c.Param("id")
-
-	conn, err := wsUpgrader.Upgrade(c.Writer, c.Request, nil)
-	if err != nil {
-		log.Printf("WebSocket upgrade error: %v", err)
-		return
-	}
-	defer conn.Close()
-
-	ctx := context.Background()
-	stats, err := cli.ContainerStats(ctx, containerID, true)
-	if err != nil {
-		conn.WriteMessage(websocket.TextMessage, []byte("Error fetching stats"))
-		return
-	}
-	defer stats.Body.Close()
-
-	decoder := json.NewDecoder(stats.Body)
-
-	for {
-		var v *types.StatsJSON
-		if err := decoder.Decode(&v); err != nil {
-			log.Printf("Decode error: %v", err)
-			break
-		}
-
-		// 计算 CPU 使用率
-		cpuPercent := calculateCPUPercent(v)
-
-		// 计算内存使用
-		memUsageMB := v.MemoryStats.Usage / (1024 * 1024)
-		memLimitMB := v.MemoryStats.Limit / (1024 * 1024)
-
-		info := gin.H{
-			"cpu_percent":     cpuPercent,
-			"memory_usage_mb": memUsageMB,
-			"memory_limit_mb": memLimitMB,
-		}
-
-		jsonData, _ := json.Marshal(info)
-		conn.WriteMessage(websocket.TextMessage, jsonData)
-		time.Sleep(2 * time.Second)
-	}
-}
-
-// CPU 计算
-func calculateCPUPercent(stat *types.StatsJSON) float64 {
-	cpuDelta := float64(stat.CPUStats.CPUUsage.TotalUsage) - float64(stat.PreCPUStats.CPUUsage.TotalUsage)
-	systemDelta := float64(stat.CPUStats.SystemUsage) - float64(stat.PreCPUStats.SystemUsage)
-	var cpuPercent = 0.0
-	if systemDelta > 0.0 && cpuDelta > 0.0 {
-		cpuPercent = (cpuDelta / systemDelta) * float64(len(stat.CPUStats.CPUUsage.PercpuUsage)) * 100.0
-	}
-	return cpuPercent
-}
-
 // ------------------- 创建容器 -------------------
-type CreateContainerRequest struct {
-	Image         string   `json:"image"`
-	Name          string   `json:"name"`
-	Ports         []string `json:"ports"`
-	Env           []string `json:"env"`
-	Volumes       []string `json:"volumes"`
-	CPUQuota      int64    `json:"cpu_quota"`
-	MemoryMB      int64    `json:"memory_mb"`
-	RestartPolicy string   `json:"restart_policy"`
-	NetworkMode   string   `json:"network_mode"`
-}
-
 func CreateContainer(c *gin.Context) {
-	cli, err := getDockerClient(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+	var req struct {
+		Name    string `json:"name"`
+		Image   string `json:"image"`
+		Ports   string `json:"ports"`
+		Volumes string `json:"volumes"`
+		Envs    string `json:"envs"`
+		CPU     string `json:"cpu"`
+		Memory  string `json:"memory"`
+		Restart string `json:"restart"`
+		Network string `json:"network"`
 	}
-
-	var req CreateContainerRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil || req.Image == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
 	}
 
-	portBindings := map[nat.Port][]nat.PortBinding{}
-	exposedPorts := nat.PortSet{}
-	for _, p := range req.Ports {
-		parts := strings.Split(p, ":")
-		if len(parts) != 2 {
-			continue
+	cli, err := client.NewClientWithOpts(client.FromEnv)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Docker client init failed"})
+		return
+	}
+
+	ctx := context.Background()
+
+	// 拉取镜像（如果不存在）
+	_, _, err = cli.ImageInspectWithRaw(ctx, req.Image)
+	if err != nil {
+		out, pullErr := cli.ImagePull(ctx, req.Image, types.ImagePullOptions{})
+		if pullErr != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Pull image failed", "detail": pullErr.Error()})
+			return
 		}
-		hostPort := parts[0]
-		containerPort := parts[1]
-		port, _ := nat.NewPort("tcp", containerPort)
-		exposedPorts[port] = struct{}{}
-		portBindings[port] = []nat.PortBinding{{HostPort: hostPort}}
+		defer out.Close()
 	}
 
-	binds := req.Volumes
+	// 端口映射
+	exposedPorts := nat.PortSet{}
+	portBindings := nat.PortMap{}
+	if req.Network != "host" && req.Ports != "" {
+		portPairs := strings.Split(req.Ports, ",")
+		for _, p := range portPairs {
+			parts := strings.Split(p, ":")
+			if len(parts) != 2 {
+				continue
+			}
+			portKey := nat.Port(parts[1] + "/tcp")
+			exposedPorts[portKey] = struct{}{}
+			portBindings[portKey] = []nat.PortBinding{{HostPort: parts[0]}}
+		}
+	}
 
+	// 目录挂载
+	var binds []string
+	if req.Volumes != "" {
+		volList := strings.Split(req.Volumes, ",")
+		for _, v := range volList {
+			binds = append(binds, v)
+		}
+	}
+
+	// 环境变量
+	var envList []string
+	if req.Envs != "" {
+		envList = strings.Split(req.Envs, ",")
+	}
+
+	// 资源限制
 	hostConfig := &container.HostConfig{
-		PortBindings: portBindings,
 		Binds:        binds,
+		PortBindings: portBindings,
+	}
+	if req.CPU != "" {
+		hostConfig.NanoCPUs = parseCPU(req.CPU)
+	}
+	if req.Memory != "" {
+		memLimit := parseMemory(req.Memory)
+		hostConfig.Memory = memLimit
+	}
+	if req.Restart != "" {
+		hostConfig.RestartPolicy = container.RestartPolicy{Name: req.Restart}
+	}
+	if req.Network != "" {
+		hostConfig.NetworkMode = container.NetworkMode(req.Network)
 	}
 
-	if req.CPUQuota > 0 {
-		hostConfig.Resources.CPUQuota = req.CPUQuota
-	}
-	if req.MemoryMB > 0 {
-		hostConfig.Resources.Memory = req.MemoryMB * 1024 * 1024
-	}
-	if req.RestartPolicy != "" {
-		hostConfig.RestartPolicy = container.RestartPolicy{Name: req.RestartPolicy}
-	}
-	if req.NetworkMode != "" {
-		hostConfig.NetworkMode = container.NetworkMode(req.NetworkMode)
-	}
-
-	resp, err := cli.ContainerCreate(context.Background(), &container.Config{
+	resp, err := cli.ContainerCreate(ctx, &container.Config{
 		Image:        req.Image,
-		Env:          req.Env,
+		Env:          envList,
 		ExposedPorts: exposedPorts,
 	}, hostConfig, &network.NetworkingConfig{}, nil, req.Name)
 	if err != nil {
@@ -235,8 +177,30 @@ func CreateContainer(c *gin.Context) {
 		return
 	}
 
-	cli.ContainerStart(context.Background(), resp.ID, types.ContainerStartOptions{})
+	cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{})
 	c.JSON(http.StatusOK, gin.H{"message": "Container created", "id": resp.ID[:12]})
+}
+
+// 辅助函数 解析 CPU
+func parseCPU(cpu string) int64 {
+	val, err := parseFloat(cpu)
+	if err != nil {
+		return 0
+	}
+	return int64(val * 1e9) // CPU 核心数 → NanoCPU
+}
+
+// 辅助函数 解析内存
+func parseMemory(mem string) int64 {
+	val, err := parseFloat(mem)
+	if err != nil {
+		return 0
+	}
+	return int64(val * 1024 * 1024) // MB → Bytes
+}
+
+func parseFloat(s string) (float64, error) {
+	return strconv.ParseFloat(strings.TrimSpace(s), 64)
 }
 
 // ------------------- 日志 WebSocket -------------------
@@ -247,13 +211,12 @@ var wsUpgrader = websocket.Upgrader{
 }
 
 func ContainerLogsWS(c *gin.Context) {
-	cli, err := getDockerClient(c)
+	containerID := c.Param("id")
+	cli, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Docker client init failed"})
 		return
 	}
-
-	containerID := c.Param("id")
 
 	conn, err := wsUpgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {

@@ -7,25 +7,9 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { padding-top: 70px; background-color: #f8f9fa; }
-        .nav-link-custom {
-            font-weight: 500;
-            color: #555;
-            margin-left: 10px;
-            transition: all 0.3s ease-in-out;
-        }
-        .nav-link-custom:hover {
-            background-color: #e2e6ea;
-            border-radius: 5px;
-            color: #000;
-        }
-        .navbar-light .navbar-nav .nav-link.active {
-            background-color: #0d6efd;
-            color: #fff !important;
-            border-radius: 5px;
-        }
-        .card {
-            border-radius: 10px;
-        }
+        .nav-link-custom { font-weight: 500; color: #555; margin-left: 10px; }
+        .nav-link-custom:hover { background-color: #e2e6ea; border-radius: 5px; color: #000; }
+        .navbar-light .navbar-nav .nav-link.active { background-color: #0d6efd; color: #fff !important; border-radius: 5px; }
     </style>
 </head>
 <body>
@@ -34,230 +18,171 @@
 <nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm fixed-top">
     <div class="container-fluid">
         <a class="navbar-brand fw-bold" href="/">🚀 Auto Deploy</a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-            <span class="navbar-toggler-icon"></span>
-        </button>
         <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
             <ul class="navbar-nav">
-                <li class="nav-item">
-                    <a class="nav-link nav-link-custom" href="/">📊 System Monitor</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link nav-link-custom" href="/static/containers.html">📦 Containers</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link nav-link-custom active" href="/static/containers-create.html">🚀 Deploy</a>
-                </li>
+                <li class="nav-item"><a class="nav-link nav-link-custom" href="/">📊 System Monitor</a></li>
+                <li class="nav-item"><a class="nav-link nav-link-custom" href="/static/containers.html">📦 Containers</a></li>
+                <li class="nav-item"><a class="nav-link nav-link-custom active" href="/static/containers-create.html">🚀 Deploy</a></li>
+                <li class="nav-item"><a class="nav-link nav-link-custom" href="/static/compose.html">🧩 Compose</a></li>
             </ul>
         </div>
     </div>
 </nav>
 
+<!-- 主体 -->
 <div class="container mt-4">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
+    <h1 class="mb-4">🚀 部署新容器</h1>
 
-            <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white">
-                    <h4 class="mb-0">📦 部署新容器</h4>
-                </div>
-                <div class="card-body">
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="mb-3">
+                <label class="form-label">镜像名称 <span class="text-danger">*</span></label>
+                <input type="text" id="image" class="form-control" placeholder="如 nginx:latest">
+            </div>
 
-                    <!-- 服务器选择 -->
-                    <div class="mb-3">
-                        <label class="form-label">选择服务器</label>
-                        <select id="host-select" class="form-select">
-                            <!-- 动态加载 -->
-                        </select>
-                    </div>
+            <div class="mb-3">
+                <label class="form-label">容器名称 (可选)</label>
+                <input type="text" id="container-name" class="form-control" placeholder="如 my-nginx">
+            </div>
 
-                    <form id="create-form">
+            <!-- 高级选项 -->
+            <div class="accordion mb-3" id="advancedOptions">
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingAdvanced">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAdvanced" aria-expanded="false" aria-controls="collapseAdvanced">
+                            ⚙️ 高级设置
+                        </button>
+                    </h2>
+                    <div id="collapseAdvanced" class="accordion-collapse collapse" aria-labelledby="headingAdvanced" data-bs-parent="#advancedOptions">
+                        <div class="accordion-body">
 
-                        <div class="form-floating mb-3">
-                            <input type="text" class="form-control" id="image" placeholder="nginx:latest" required>
-                            <label>镜像名 *</label>
-                        </div>
-
-                        <div class="form-floating mb-3">
-                            <input type="text" class="form-control" id="name" placeholder="容器名 (可选)">
-                            <label>容器名称 (可选)</label>
-                        </div>
-
-                        <div class="form-floating mb-3">
-                            <input type="text" class="form-control" id="ports" placeholder="端口映射">
-                            <label>端口映射 (如 8080:80,443:443)</label>
-                        </div>
-
-                        <div class="form-floating mb-3">
-                            <input type="text" class="form-control" id="env" placeholder="环境变量">
-                            <label>环境变量 (如 KEY=VALUE,DEBUG=true)</label>
-                        </div>
-
-                        <div class="form-floating mb-3">
-                            <input type="text" class="form-control" id="volumes" placeholder="挂载目录">
-                            <label>目录挂载 (如 /host/path:/container/path)</label>
-                        </div>
-
-                        <!-- 高级选项 -->
-                        <p>
-                            <a class="btn btn-link" data-bs-toggle="collapse" href="#advancedOptions" role="button">
-                                ⚙️ 高级选项
-                            </a>
-                        </p>
-
-                        <div class="collapse" id="advancedOptions">
-                            <div class="form-floating mb-3">
-                                <input type="number" class="form-control" id="cpu_quota" placeholder="CPU限制">
-                                <label>CPU 限制 (milli CPU)</label>
-                            </div>
-                            <div class="form-floating mb-3">
-                                <input type="number" class="form-control" id="memory_mb" placeholder="内存限制">
-                                <label>内存限制 (MB)</label>
-                            </div>
                             <div class="mb-3">
-                                <label>重启策略</label>
-                                <select class="form-select" id="restart_policy">
-                                    <option value="">默认</option>
+                                <label class="form-label">端口映射 (如 80:80,443:443)</label>
+                                <input type="text" id="ports" class="form-control">
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">目录挂载 (如 /host:/container,...)</label>
+                                <input type="text" id="volumes" class="form-control">
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">环境变量 (如 KEY=VAL,ENV=prod,...)</label>
+                                <input type="text" id="envs" class="form-control">
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">CPU 限制 (核数, 如 1.5)</label>
+                                <input type="text" id="cpu" class="form-control">
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">内存限制 (MB, 如 512)</label>
+                                <input type="text" id="memory" class="form-control">
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">重启策略</label>
+                                <select id="restart" class="form-select">
+                                    <option value="">不设置</option>
                                     <option value="no">no</option>
                                     <option value="always">always</option>
+                                    <option value="on-failure">on-failure</option>
                                     <option value="unless-stopped">unless-stopped</option>
                                 </select>
                             </div>
+
                             <div class="mb-3">
-                                <label>网络模式</label>
-                                <select class="form-select" id="network_mode">
-                                    <option value="">默认 bridge</option>
-                                    <option value="bridge">bridge</option>
+                                <label class="form-label">网络模式</label>
+                                <select id="network" class="form-select" onchange="togglePorts()">
+                                    <option value="">bridge (默认)</option>
                                     <option value="host">host</option>
-                                    <option value="none">none</option>
                                 </select>
                             </div>
+
                         </div>
-
-                        <button type="button" class="btn btn-success w-100 btn-lg" onclick="createContainer()" id="create-btn">
-                            🚀 部署容器
-                        </button>
-
-                        <div id="status" class="mt-3 text-center"></div>
-
-                    </form>
-
+                    </div>
                 </div>
             </div>
 
+            <button class="btn btn-primary btn-lg w-100" onclick="createContainer()">🚀 创建容器</button>
         </div>
     </div>
-</div>
 
-<!-- Loading Modal -->
-<div class="modal fade" id="loadingModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content text-center">
-            <div class="modal-body">
-                <div class="spinner-border text-primary" role="status"></div>
-                <p class="mt-3 mb-0">正在拉取镜像并创建容器，请稍候...</p>
-            </div>
-        </div>
-    </div>
+    <!-- 结果提示 -->
+    <div id="result" class="mt-4"></div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-<!-- 配置 & 服务器加载 -->
 <script>
     let CONFIG = {};
 
+    // 加载 config
     async function loadConfig() {
-        try {
-            let res = await fetch('/static/config.json');
-            CONFIG = await res.json();
-            console.log("✅ Config loaded:", CONFIG);
-        } catch (err) {
-            alert("❌ 配置文件加载失败！");
-        }
+        let res = await fetch('/static/config.json');
+        CONFIG = await res.json();
     }
 
-    async function loadServers() {
-        const res = await fetch('/static/servers.json');
-        const servers = await res.json();
-        const select = document.getElementById("host-select");
-        servers.forEach(s => {
-            let option = document.createElement("option");
-            option.value = s.host;
-            option.innerText = `${s.name} (${s.host})`;
-            select.appendChild(option);
-        });
+    // 端口是否禁用
+    function togglePorts() {
+        let network = document.getElementById("network").value;
+        document.getElementById("ports").disabled = (network === "host");
     }
-</script>
 
-<script>
+    // 创建容器
     async function createContainer() {
-        const image = document.getElementById("image").value.trim();
-        const name = document.getElementById("name").value.trim();
-        const portsRaw = document.getElementById("ports").value.trim();
-        const envRaw = document.getElementById("env").value.trim();
-        const volumesRaw = document.getElementById("volumes").value.trim();
-        const host = document.getElementById("host-select").value;
-
-        const cpuQuotaRaw = document.getElementById("cpu_quota").value.trim();
-        const memoryMBRaw = document.getElementById("memory_mb").value.trim();
-        const restartPolicy = document.getElementById("restart_policy").value;
-        const networkMode = document.getElementById("network_mode").value;
-
-        const statusDiv = document.getElementById("status");
-        const createBtn = document.getElementById("create-btn");
+        let name = document.getElementById("container-name").value.trim();
+        let image = document.getElementById("image").value.trim();
+        let ports = document.getElementById("ports").value.trim();
+        let volumes = document.getElementById("volumes").value.trim();
+        let envs = document.getElementById("envs").value.trim();
+        let cpu = document.getElementById("cpu").value.trim();
+        let memory = document.getElementById("memory").value.trim();
+        let restart = document.getElementById("restart").value;
+        let network = document.getElementById("network").value;
 
         if (!image) {
-            statusDiv.innerHTML = "<span class='text-danger'>⚠️ 镜像名不能为空</span>";
+            showResult("❌ 镜像名称不能为空", "danger");
             return;
         }
 
-        const ports = portsRaw ? portsRaw.split(",") : [];
-        const env = envRaw ? envRaw.split(",") : [];
-        const volumes = volumesRaw ? volumesRaw.split(",") : [];
-        let cpuQuota = parseInt(cpuQuotaRaw) * 1000 || 0;
-        let memoryMB = parseInt(memoryMBRaw) || 0;
+        showResult("🔄 正在创建容器...", "info");
 
-        let loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'));
-        loadingModal.show();
-
-        createBtn.disabled = true;
-        statusDiv.innerHTML = "";
+        let payload = {
+            name: name,
+            image: image,
+            ports: ports,
+            volumes: volumes,
+            envs: envs,
+            cpu: cpu,
+            memory: memory,
+            restart: restart,
+            network: network
+        };
 
         try {
-            let res = await fetch(`${CONFIG.apiBaseUrl}/container/create?host=${host}`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    image, name, ports, env, volumes,
-                    cpu_quota: cpuQuota,
-                    memory_mb: memoryMB,
-                    restart_policy: restartPolicy,
-                    network_mode: networkMode
-                })
+            let res = await fetch(`${CONFIG.apiBaseUrl}/container/create`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
             });
-
             let data = await res.json();
-
-            if (res.status === 200) {
-                statusDiv.innerHTML = `<span class='text-success'>✅ ${data.message} (ID: ${data.id})</span>`;
-                document.getElementById("create-form").reset();
+            if (res.ok) {
+                showResult(`✅ 创建成功！容器ID: ${data.id}`, "success");
             } else {
-                statusDiv.innerHTML = `<span class='text-danger'>❌ 创建失败: ${data.error || data.detail}</span>`;
+                showResult(`❌ 创建失败: ${data.error}`, "danger");
             }
-
         } catch (err) {
-            statusDiv.innerHTML = `<span class='text-danger'>❌ 请求失败: ${err.message}</span>`;
+            showResult(`❌ 网络错误: ${err.message}`, "danger");
         }
-
-        loadingModal.hide();
-        createBtn.disabled = false;
     }
 
-    window.onload = async function() {
-        await loadConfig();
-        await loadServers();
-    };
+    function showResult(msg, type) {
+        document.getElementById("result").innerHTML = `<div class="alert alert-${type}" role="alert">${msg}</div>`;
+    }
+
+    window.onload = () => { loadConfig(); togglePorts(); };
 </script>
 
 </body>

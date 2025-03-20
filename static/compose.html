@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Compose Deploy</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { padding-top: 70px; background-color: #f8f9fa; }
+        .nav-link-custom { font-weight: 500; color: #555; margin-left: 10px; }
+        .nav-link-custom:hover { background-color: #e2e6ea; border-radius: 5px; color: #000; }
+        .navbar-light .navbar-nav .nav-link.active { background-color: #0d6efd; color: #fff !important; border-radius: 5px; }
+        .compose-card { margin-bottom: 15px; }
+        #logs { background: #000; color: #0f0; height: 300px; overflow: auto; padding: 10px; }
+    </style>
+</head>
+<body>
+
+<!-- 导航栏 -->
+<nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm fixed-top">
+    <div class="container-fluid">
+        <a class="navbar-brand fw-bold" href="/">🚀 Auto Deploy</a>
+        <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+            <ul class="navbar-nav">
+                <li class="nav-item"><a class="nav-link nav-link-custom" href="/">📊 System Monitor</a></li>
+                <li class="nav-item"><a class="nav-link nav-link-custom" href="/static/containers.html">📦 Containers</a></li>
+                <li class="nav-item"><a class="nav-link nav-link-custom" href="/static/containers-create.html">🚀 Deploy</a></li>
+                <li class="nav-item"><a class="nav-link nav-link-custom active" href="/static/compose.html">🧩 Compose</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<!-- 主体 -->
+<div class="container mt-4">
+    <h1 class="mb-4">🧩 Compose 应用部署</h1>
+
+    <!-- 上传 -->
+    <div class="card mb-4">
+        <div class="card-header">📄 上传 docker-compose.yml</div>
+        <div class="card-body">
+            <div class="mb-3">
+                <label class="form-label">Compose 名称 (标识符)</label>
+                <input type="text" id="compose-name" class="form-control" placeholder="如 my-app">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">选择 Compose 文件</label>
+                <input type="file" id="compose-file" class="form-control">
+            </div>
+            <button class="btn btn-success" onclick="uploadCompose()">上传</button>
+        </div>
+    </div>
+
+    <!-- Compose 应用列表 -->
+    <div class="card mb-4">
+        <div class="card-header">📂 已上传 Compose 应用</div>
+        <div class="card-body" id="compose-list">
+            <p>加载中...</p>
+        </div>
+    </div>
+
+    <!-- 日志 -->
+    <div class="card">
+        <div class="card-header">📜 执行日志</div>
+        <div class="card-body">
+            <pre id="logs">等待操作...</pre>
+        </div>
+    </div>
+</div>
+
+<!-- 容器详情 Modal -->
+<div class="modal fade" id="composeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Compose 详情</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="composeModalBody">
+                <!-- 动态内容 -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    const CONFIG = { apiBaseUrl: "/api/v1", wsBaseUrl: `ws://13.229.106.247:8081/api/v1` };
+    let ws;
+    let logsDiv = document.getElementById("logs");
+
+    async function uploadCompose() {
+        let name = document.getElementById("compose-name").value.trim();
+        let file = document.getElementById("compose-file").files[0];
+
+        if (!name || !file) {
+            alert("请填写名称并选择文件");
+            return;
+        }
+
+        let formData = new FormData();
+        formData.append("name", name);
+        formData.append("compose_file", file);
+
+        let res = await fetch(`${CONFIG.apiBaseUrl}/compose/upload`, {
+            method: "POST",
+            body: formData
+        });
+        if (res.ok) {
+            alert("✅ 上传成功！");
+            loadComposeStatus();
+        } else {
+            alert("❌ 上传失败");
+        }
+    }
+
+    async function loadComposeStatus() {
+        let res = await fetch(`${CONFIG.apiBaseUrl}/compose/status`);
+        let data = await res.json();
+
+        let listDiv = document.getElementById("compose-list");
+        listDiv.innerHTML = "";
+
+        if (data.apps.length === 0) {
+            listDiv.innerHTML = `<p class="text-muted">暂无 Compose 应用</p>`;
+            return;
+        }
+
+        data.apps.forEach(app => {
+            let row = `<div class="card compose-card">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <button class="btn btn-outline-primary btn-sm" onclick="showComposeDetail('${app.name}')">🟢 ${app.name}</button>
+                        <span class="ms-3 text-success">${app.status}</span>
+                    </div>
+                    <div>
+                        <button class="btn btn-success btn-sm me-2" onclick="startCompose('${app.name}')">Start</button>
+                        <button class="btn btn-danger btn-sm me-2" onclick="stopCompose('${app.name}')">Stop</button>
+                        <button class="btn btn-outline-danger btn-sm" onclick="deleteCompose('${app.name}')">Delete</button>
+                    </div>
+                </div>
+            </div>`;
+            listDiv.innerHTML += row;
+        });
+    }
+
+    async function showComposeDetail(name) {
+        let res = await fetch(`${CONFIG.apiBaseUrl}/compose/status`);
+        let data = await res.json();
+
+        let targetApp = data.apps.find(a => a.name === name);
+        if (!targetApp) {
+            alert("未找到该 Compose 应用！");
+            return;
+        }
+
+        let modalBody = `<p><strong>${targetApp.name}</strong> 状态: ${targetApp.status}</p>`;
+        modalBody += `<table class="table table-sm">
+          <thead><tr><th>ID</th><th>名称</th><th>镜像</th><th>状态</th><th>端口</th></tr></thead>
+          <tbody>`;
+        targetApp.containers.forEach(c => {
+            modalBody += `<tr>
+              <td>${c.id}</td>
+              <td>${c.name}</td>
+              <td>${c.image}</td>
+              <td>${c.status}</td>
+              <td>${c.ports}</td>
+            </tr>`;
+        });
+        modalBody += `</tbody></table>`;
+
+        document.getElementById("composeModalBody").innerHTML = modalBody;
+
+        let modal = new bootstrap.Modal(document.getElementById('composeModal'));
+        modal.show();
+    }
+
+    async function startCompose(name) {
+        logsDiv.innerText = "🔄 正在启动...\n";
+        ws = new WebSocket(`${CONFIG.wsBaseUrl}/ws/compose-logs?name=${name}`);
+        ws.onmessage = function(event) {
+            logsDiv.innerText += event.data + "\n";
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+        };
+        await fetch(`${CONFIG.apiBaseUrl}/compose/up`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name })
+        });
+        loadComposeStatus();
+    }
+
+    async function stopCompose(name) {
+        logsDiv.innerText = "🔄 正在停止...\n";
+        await fetch(`${CONFIG.apiBaseUrl}/compose/down`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name })
+        });
+        logsDiv.innerText += "✅ 停止完成\n";
+        loadComposeStatus();
+    }
+
+    async function deleteCompose(name) {
+        if (!confirm(`确认要删除 Compose 应用 ${name} 吗？`)) return;
+        await fetch(`${CONFIG.apiBaseUrl}/compose/delete`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name })
+        });
+        loadComposeStatus();
+    }
+
+    window.onload = function() {
+        loadComposeStatus();
+    };
+</script>
+
+</body>
+</html>
