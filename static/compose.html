@@ -25,8 +25,8 @@
                 <li class="nav-item"><a class="nav-link nav-link-custom" href="/">📊 System Monitor</a></li>
                 <li class="nav-item"><a class="nav-link nav-link-custom" href="/static/containers.html">📦 Containers</a></li>
                 <li class="nav-item"><a class="nav-link nav-link-custom" href="/static/containers-create.html">🚀 Deploy</a></li>
-                <li class="nav-item"><a class="nav-link nav-link-custom active" href="/static/compose.html">🧩 Compose</a></li>
-                <li class="nav-item"><a class="nav-link nav-link-custom active" href="/static/files.html">📂 File Manager</a></li>
+                <li class="nav-item"><a class="nav-link nav-link-custom" href="/static/compose.html">🧩 Compose</a></li>
+                <li class="nav-item"><a class="nav-link nav-link-custom" href="/static/files.html">📂 File Manager</a></li>
             </ul>
         </div>
     </div>
@@ -213,8 +213,20 @@
         loadComposeStatus();
     }
 
+    //判断按钮
+    function highlightNav() {
+        let navLinks = document.querySelectorAll('.nav-link-custom');
+        let currentPath = window.location.pathname;
+        navLinks.forEach(link => {
+            if (link.getAttribute('href') === currentPath) {
+                link.classList.add('active');
+            }
+        });
+    }
+
     window.onload = function() {
         loadComposeStatus();
+        highlightNav(); // 动态高亮
     };
 </script>
 
