@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	_ "auto-deploy-platform/models"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -20,17 +21,14 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// 辅助函数 → Base64 Encode
-func encodeAuthToBase64(authConfig types.AuthConfig) string {
-	encodedJSON, err := json.Marshal(authConfig)
-	if err != nil {
-		log.Printf("Error encoding auth: %v", err)
-		return ""
-	}
-	return base64.URLEncoding.EncodeToString(encodedJSON)
-}
-
-// ------------------- 容器列表 -------------------
+// ListContainers 列出所有 Docker 容器
+// @Summary 获取容器列表
+// @Description 获取本机所有 Docker 容器的详细信息
+// @Tags 容器管理
+// @Produce json
+// @Success 200 {object} models.ContainerListResponse "成功返回容器列表"
+// @Failure 500 {object} models.ErrorResponse "服务器内部错误"
+// @Router /containers [get]
 func ListContainers(c *gin.Context) {
 	cli, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
@@ -58,7 +56,15 @@ func ListContainers(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"containers": containerInfos})
 }
 
-// ------------------- Start 容器 -------------------
+// StartContainer 启动容器
+// @Summary 启动容器
+// @Description 启动指定容器
+// @Tags 容器管理
+// @Param id path string true "容器ID"
+// @Success 200 {object} models.SuccessResponse "成功启动容器"
+// @Failure 400 {object} models.ErrorResponse "请求参数错误"
+// @Failure 500 {object} models.ErrorResponse "服务器内部错误"
+// @Router /container/{id}/start [post]
 func StartContainer(c *gin.Context) {
 	containerID := c.Param("id")
 	cli, err := client.NewClientWithOpts(client.FromEnv)
@@ -75,7 +81,15 @@ func StartContainer(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Container started"})
 }
 
-// ------------------- Stop 容器 -------------------
+// StopContainer 停止指定容器
+// @Summary 停止容器
+// @Description 通过容器ID停止正在运行的容器
+// @Tags 容器管理
+// @Param id path string true "容器ID"
+// @Success 200 {object} models.SuccessResponse "成功停止容器"
+// @Failure 400 {object} models.ErrorResponse "请求参数错误"
+// @Failure 500 {object} models.ErrorResponse "服务器内部错误"
+// @Router /container/{id}/stop [post]
 func StopContainer(c *gin.Context) {
 	containerID := c.Param("id")
 	cli, err := client.NewClientWithOpts(client.FromEnv)
@@ -93,7 +107,17 @@ func StopContainer(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Container stopped"})
 }
 
-// ------------------- 创建容器 -------------------
+// CreateContainer 创建 Docker 容器
+// @Summary 创建容器
+// @Description 创建一个新的 Docker 容器，支持设置端口映射、卷挂载、环境变量、资源限制等
+// @Tags 容器管理
+// @Accept json
+// @Produce json
+// @Param container body models.CreateContainerRequest true "创建容器请求参数"
+// @Success 200 {object} models.CreateContainerResponse "创建成功返回容器ID"
+// @Failure 400 {object} models.ErrorResponse "请求参数错误"
+// @Failure 500 {object} models.ErrorResponse "服务器内部错误"
+// @Router /container/create [post]
 func CreateContainer(c *gin.Context) {
 	var req struct {
 		Name    string `json:"name"`
@@ -230,17 +254,35 @@ func parseMemory(mem string) int64 {
 	return int64(val * 1024 * 1024) // MB → Bytes
 }
 
+// 辅助函数 → Base64 Encode
+func encodeAuthToBase64(authConfig types.AuthConfig) string {
+	encodedJSON, err := json.Marshal(authConfig)
+	if err != nil {
+		log.Printf("Error encoding auth: %v", err)
+		return ""
+	}
+	return base64.URLEncoding.EncodeToString(encodedJSON)
+}
+
 func parseFloat(s string) (float64, error) {
 	return strconv.ParseFloat(strings.TrimSpace(s), 64)
 }
 
-// ------------------- 日志 WebSocket -------------------
 var wsUpgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		return true
 	},
 }
 
+// ContainerLogsWS 容器日志 WebSocket
+// @Summary 实时获取容器日志
+// @Description 通过 WebSocket 连接获取指定容器的实时日志流，连接后服务器持续推送日志内容
+// @Tags 容器管理
+// @Param id path string true "容器ID"
+// @Produce plain
+// @Success 101 {string} string "WebSocket 连接已建立，开始推送日志"
+// @Failure 500 {object} models.ErrorResponse "Docker client 初始化失败 或 WebSocket 升级失败"
+// @Router /container/{id}/logs/ws [get]
 func ContainerLogsWS(c *gin.Context) {
 	containerID := c.Param("id")
 	cli, err := client.NewClientWithOpts(client.FromEnv)

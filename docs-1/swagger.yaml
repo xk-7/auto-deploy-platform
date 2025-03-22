@@ -1,8 +1,0 @@
-basePath: /
-info:
-  contact: {}
-  description: server manager API 文档
-  title: server manager API 文档
-  version: "1.0"
-paths: {}
-swagger: "2.0"

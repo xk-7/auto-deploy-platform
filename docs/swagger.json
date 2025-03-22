@@ -1,34 +1,950 @@
 {
+    "schemes": [
+        "https"
+    ],
     "swagger": "2.0",
     "info": {
-        "description": "文件上传、部署、Compose、文件管理接口文档",
-        "title": "服务器平台 API 文档",
+        "description": "自动化部署平台接口文档，支持容器、Compose、文件、Ansible管理。",
+        "title": "Auto Deploy Platform API",
         "contact": {
-            "name": "AutoDeploy Team",
+            "name": "Dev Team",
+            "url": "https://www.xkkk.online",
             "email": "kliu4403@gmail.com"
         },
         "version": "1.0"
     },
-    "host": "localhost:8081",
+    "host": "api.xkkk.online",
     "basePath": "/",
     "paths": {
-        "/api/v1/files/list": {
-            "get": {
-                "description": "获取指定路径下文件和目录",
-                "tags": [
-                    "文件管理"
+        "/ansible/run": {
+            "post": {
+                "description": "通过提供 Inventory 文件和 Playbook 路径，执行 Ansible 并实时返回日志流",
+                "consumes": [
+                    "application/json"
                 ],
-                "summary": "获取文件列表",
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "自动化部署"
+                ],
+                "summary": "执行 Ansible Playbook",
+                "parameters": [
+                    {
+                        "description": "Ansible 执行参数",
+                        "name": "ansible",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.RunAnsibleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "执行日志流（stream）",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Ansible 执行失败",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/compose/delete": {
+            "post": {
+                "description": "删除指定 Compose 应用及其目录",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Compose管理"
+                ],
+                "summary": "删除 Compose 应用",
+                "parameters": [
+                    {
+                        "description": "Compose 应用名称",
+                        "name": "compose",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.ComposeActionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "删除成功",
+                        "schema": {
+                            "$ref": "#/definitions/models.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "删除失败",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/compose/list": {
+            "get": {
+                "description": "列出当前存在的所有 Compose 应用",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Compose管理"
+                ],
+                "summary": "获取 Compose 应用列表",
+                "responses": {
+                    "200": {
+                        "description": "成功返回 Compose 应用列表",
+                        "schema": {
+                            "$ref": "#/definitions/models.ListComposeResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "读取目录失败",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/compose/start": {
+            "post": {
+                "description": "通过应用名称启动对应 Compose 应用",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Compose管理"
+                ],
+                "summary": "启动 Compose 应用",
+                "parameters": [
+                    {
+                        "description": "Compose 应用名称",
+                        "name": "compose",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.ComposeActionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "启动成功",
+                        "schema": {
+                            "$ref": "#/definitions/models.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "启动失败",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/compose/status": {
+            "get": {
+                "description": "查看各 Compose 应用包含的容器及运行状态",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Compose管理"
+                ],
+                "summary": "获取 Compose 应用状态",
+                "responses": {
+                    "200": {
+                        "description": "成功返回 Compose 容器状态",
+                        "schema": {
+                            "$ref": "#/definitions/models.ComposeStatusResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Docker client 初始化或容器列表失败",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/compose/stop": {
+            "post": {
+                "description": "通过应用名称停止对应 Compose 应用",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Compose管理"
+                ],
+                "summary": "停止 Compose 应用",
+                "parameters": [
+                    {
+                        "description": "Compose 应用名称",
+                        "name": "compose",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.ComposeActionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "停止成功",
+                        "schema": {
+                            "$ref": "#/definitions/models.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "停止失败",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/compose/upload": {
+            "post": {
+                "description": "上传并保存 Docker Compose 文件",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Compose管理"
+                ],
+                "summary": "上传 Compose 文件",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "目录路径",
-                        "name": "path",
-                        "in": "query"
+                        "description": "Compose 文件名称",
+                        "name": "name",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Compose 文件 (YAML格式)",
+                        "name": "compose_file",
+                        "in": "formData",
+                        "required": true
                     }
                 ],
-                "responses": {}
+                "responses": {
+                    "200": {
+                        "description": "上传成功",
+                        "schema": {
+                            "$ref": "#/definitions/models.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
             }
+        },
+        "/container/create": {
+            "post": {
+                "description": "创建一个新的 Docker 容器，支持设置端口映射、卷挂载、环境变量、资源限制等",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "容器管理"
+                ],
+                "summary": "创建容器",
+                "parameters": [
+                    {
+                        "description": "创建容器请求参数",
+                        "name": "container",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CreateContainerRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "创建成功返回容器ID",
+                        "schema": {
+                            "$ref": "#/definitions/models.CreateContainerResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/container/{id}/logs/ws": {
+            "get": {
+                "description": "通过 WebSocket 连接获取指定容器的实时日志流，连接后服务器持续推送日志内容",
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "容器管理"
+                ],
+                "summary": "实时获取容器日志",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "容器ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "101": {
+                        "description": "WebSocket 连接已建立，开始推送日志",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Docker client 初始化失败 或 WebSocket 升级失败",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/container/{id}/start": {
+            "post": {
+                "description": "启动指定容器",
+                "tags": [
+                    "容器管理"
+                ],
+                "summary": "启动容器",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "容器ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功启动容器",
+                        "schema": {
+                            "$ref": "#/definitions/models.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/container/{id}/stop": {
+            "post": {
+                "description": "通过容器ID停止正在运行的容器",
+                "tags": [
+                    "容器管理"
+                ],
+                "summary": "停止容器",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "容器ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功停止容器",
+                        "schema": {
+                            "$ref": "#/definitions/models.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/containers": {
+            "get": {
+                "description": "获取本机所有 Docker 容器的详细信息",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "容器管理"
+                ],
+                "summary": "获取容器列表",
+                "responses": {
+                    "200": {
+                        "description": "成功返回容器列表",
+                        "schema": {
+                            "$ref": "#/definitions/models.ContainerListResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/files/delete": {
+            "post": {
+                "description": "删除指定路径下的文件或目录",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "文件管理"
+                ],
+                "summary": "删除文件或文件夹",
+                "parameters": [
+                    {
+                        "description": "删除文件参数",
+                        "name": "file",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.FileDeleteRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "删除成功",
+                        "schema": {
+                            "$ref": "#/definitions/models.SuccessResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "越权",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "删除失败",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/files/download": {
+            "get": {
+                "description": "下载指定路径文件",
+                "produces": [
+                    "application/octet-stream"
+                ],
+                "tags": [
+                    "文件管理"
+                ],
+                "summary": "下载文件",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "文件路径",
+                        "name": "path",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "文件流",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "403": {
+                        "description": "越权",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "下载失败",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/files/mkdir": {
+            "post": {
+                "description": "在指定路径下创建新目录",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "文件管理"
+                ],
+                "summary": "创建文件夹",
+                "parameters": [
+                    {
+                        "description": "创建目录参数",
+                        "name": "dir",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.MkdirRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "创建成功",
+                        "schema": {
+                            "$ref": "#/definitions/models.SuccessResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "越权",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "创建失败",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/files/upload": {
+            "post": {
+                "description": "上传文件到指定路径",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "文件管理"
+                ],
+                "summary": "上传文件",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "目标路径，默认基础目录",
+                        "name": "path",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "file",
+                        "description": "上传文件",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "上传成功",
+                        "schema": {
+                            "$ref": "#/definitions/models.SuccessResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "越权",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "上传失败",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "models.ComposeActionRequest": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "example": "my-app"
+                }
+            }
+        },
+        "models.ComposeContainerInfo": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "example": "a1b2c3d4e5f6"
+                },
+                "image": {
+                    "type": "string",
+                    "example": "nginx:latest"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "/app1-web"
+                },
+                "ports": {
+                    "type": "string",
+                    "example": "8080:80 443:443"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "Up 3 minutes"
+                }
+            }
+        },
+        "models.ComposeStatusResponse": {
+            "type": "object",
+            "properties": {
+                "apps": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/definitions/models.ComposeContainerInfo"
+                        }
+                    }
+                }
+            }
+        },
+        "models.ContainerInfo": {
+            "type": "object",
+            "properties": {
+                "created": {
+                    "type": "integer",
+                    "example": 1678901234
+                },
+                "id": {
+                    "type": "string",
+                    "example": "a1b2c3d4e5f6"
+                },
+                "image": {
+                    "type": "string",
+                    "example": "nginx:latest"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "/my-container"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "Up 2 hours"
+                }
+            }
+        },
+        "models.ContainerListResponse": {
+            "type": "object",
+            "properties": {
+                "containers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.ContainerInfo"
+                    }
+                }
+            }
+        },
+        "models.CreateContainerRequest": {
+            "type": "object",
+            "properties": {
+                "cpu": {
+                    "description": "单位核",
+                    "type": "string",
+                    "example": "0.5"
+                },
+                "envs": {
+                    "type": "string",
+                    "example": "ENV_VAR1=value1,ENV_VAR2=value2"
+                },
+                "image": {
+                    "type": "string",
+                    "example": "nginx:latest"
+                },
+                "memory": {
+                    "description": "单位 m/g",
+                    "type": "string",
+                    "example": "512m"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "my-container"
+                },
+                "network": {
+                    "description": "host/bridge",
+                    "type": "string",
+                    "example": "bridge"
+                },
+                "ports": {
+                    "description": "hostPort:containerPort",
+                    "type": "string",
+                    "example": "8080:80,8443:443"
+                },
+                "restart": {
+                    "description": "Restart 策略",
+                    "type": "string",
+                    "example": "always"
+                },
+                "volumes": {
+                    "type": "string",
+                    "example": "/host/path:/container/path"
+                }
+            }
+        },
+        "models.CreateContainerResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer",
+                    "example": 200
+                },
+                "id": {
+                    "type": "string",
+                    "example": "a1b2c3d4e5f6"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "Container created"
+                }
+            }
+        },
+        "models.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer",
+                    "example": 500
+                },
+                "message": {
+                    "type": "string",
+                    "example": "Internal Server Error"
+                }
+            }
+        },
+        "models.FileDeleteRequest": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "example": "file.txt"
+                },
+                "path": {
+                    "type": "string",
+                    "example": "/data"
+                }
+            }
+        },
+        "models.FileInfo": {
+            "type": "object",
+            "properties": {
+                "is_dir": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "mod_time": {
+                    "type": "string",
+                    "example": "2025-03-22 12:34:56"
+                },
+                "mode": {
+                    "type": "string",
+                    "example": "rw-r--r--"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "file.txt"
+                },
+                "size": {
+                    "type": "integer",
+                    "example": 1024
+                }
+            }
+        },
+        "models.ListComposeResponse": {
+            "type": "object",
+            "properties": {
+                "apps": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "[\"app1\"",
+                        " \"app2\"]"
+                    ]
+                }
+            }
+        },
+        "models.ListFilesResponse": {
+            "type": "object",
+            "properties": {
+                "current": {
+                    "type": "string",
+                    "example": "/data"
+                },
+                "files": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.FileInfo"
+                    }
+                }
+            }
+        },
+        "models.MkdirRequest": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "example": "new-folder"
+                },
+                "path": {
+                    "type": "string",
+                    "example": "/data"
+                }
+            }
+        },
+        "models.RunAnsibleRequest": {
+            "type": "object",
+            "properties": {
+                "inventory": {
+                    "type": "string",
+                    "example": "/etc/ansible/hosts"
+                },
+                "playbook": {
+                    "type": "string",
+                    "example": "site.yml"
+                }
+            }
+        },
+        "models.SuccessResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer",
+                    "example": 200
+                },
+                "message": {
+                    "type": "string",
+                    "example": "Container stopped successfully"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "BearerToken": {
+            "description": "请输入 Bearer Token 认证，比如: Bearer eyJhbGciOi...",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
         }
     }
 }

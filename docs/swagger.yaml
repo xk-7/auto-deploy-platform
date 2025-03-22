@@ -1,23 +1,637 @@
 basePath: /
-host: localhost:8081
+definitions:
+  models.ComposeActionRequest:
+    properties:
+      name:
+        example: my-app
+        type: string
+    type: object
+  models.ComposeContainerInfo:
+    properties:
+      id:
+        example: a1b2c3d4e5f6
+        type: string
+      image:
+        example: nginx:latest
+        type: string
+      name:
+        example: /app1-web
+        type: string
+      ports:
+        example: 8080:80 443:443
+        type: string
+      status:
+        example: Up 3 minutes
+        type: string
+    type: object
+  models.ComposeStatusResponse:
+    properties:
+      apps:
+        additionalProperties:
+          items:
+            $ref: '#/definitions/models.ComposeContainerInfo'
+          type: array
+        type: object
+    type: object
+  models.ContainerInfo:
+    properties:
+      created:
+        example: 1678901234
+        type: integer
+      id:
+        example: a1b2c3d4e5f6
+        type: string
+      image:
+        example: nginx:latest
+        type: string
+      name:
+        example: /my-container
+        type: string
+      status:
+        example: Up 2 hours
+        type: string
+    type: object
+  models.ContainerListResponse:
+    properties:
+      containers:
+        items:
+          $ref: '#/definitions/models.ContainerInfo'
+        type: array
+    type: object
+  models.CreateContainerRequest:
+    properties:
+      cpu:
+        description: 单位核
+        example: "0.5"
+        type: string
+      envs:
+        example: ENV_VAR1=value1,ENV_VAR2=value2
+        type: string
+      image:
+        example: nginx:latest
+        type: string
+      memory:
+        description: 单位 m/g
+        example: 512m
+        type: string
+      name:
+        example: my-container
+        type: string
+      network:
+        description: host/bridge
+        example: bridge
+        type: string
+      ports:
+        description: hostPort:containerPort
+        example: 8080:80,8443:443
+        type: string
+      restart:
+        description: Restart 策略
+        example: always
+        type: string
+      volumes:
+        example: /host/path:/container/path
+        type: string
+    type: object
+  models.CreateContainerResponse:
+    properties:
+      code:
+        example: 200
+        type: integer
+      id:
+        example: a1b2c3d4e5f6
+        type: string
+      message:
+        example: Container created
+        type: string
+    type: object
+  models.ErrorResponse:
+    properties:
+      code:
+        example: 500
+        type: integer
+      message:
+        example: Internal Server Error
+        type: string
+    type: object
+  models.FileDeleteRequest:
+    properties:
+      name:
+        example: file.txt
+        type: string
+      path:
+        example: /data
+        type: string
+    type: object
+  models.FileInfo:
+    properties:
+      is_dir:
+        example: false
+        type: boolean
+      mod_time:
+        example: "2025-03-22 12:34:56"
+        type: string
+      mode:
+        example: rw-r--r--
+        type: string
+      name:
+        example: file.txt
+        type: string
+      size:
+        example: 1024
+        type: integer
+    type: object
+  models.ListComposeResponse:
+    properties:
+      apps:
+        example:
+        - '["app1"'
+        - ' "app2"]'
+        items:
+          type: string
+        type: array
+    type: object
+  models.ListFilesResponse:
+    properties:
+      current:
+        example: /data
+        type: string
+      files:
+        items:
+          $ref: '#/definitions/models.FileInfo'
+        type: array
+    type: object
+  models.MkdirRequest:
+    properties:
+      name:
+        example: new-folder
+        type: string
+      path:
+        example: /data
+        type: string
+    type: object
+  models.RunAnsibleRequest:
+    properties:
+      inventory:
+        example: /etc/ansible/hosts
+        type: string
+      playbook:
+        example: site.yml
+        type: string
+    type: object
+  models.SuccessResponse:
+    properties:
+      code:
+        example: 200
+        type: integer
+      message:
+        example: Container stopped successfully
+        type: string
+    type: object
+host: api.xkkk.online
 info:
   contact:
     email: kliu4403@gmail.com
-    name: AutoDeploy Team
-  description: 文件上传、部署、Compose、文件管理接口文档
-  title: 服务器平台 API 文档
+    name: Dev Team
+    url: https://www.xkkk.online
+  description: 自动化部署平台接口文档，支持容器、Compose、文件、Ansible管理。
+  title: Auto Deploy Platform API
   version: "1.0"
 paths:
-  /api/v1/files/list:
-    get:
-      description: 获取指定路径下文件和目录
+  /ansible/run:
+    post:
+      consumes:
+      - application/json
+      description: 通过提供 Inventory 文件和 Playbook 路径，执行 Ansible 并实时返回日志流
       parameters:
-      - description: 目录路径
-        in: query
-        name: path
+      - description: Ansible 执行参数
+        in: body
+        name: ansible
+        required: true
+        schema:
+          $ref: '#/definitions/models.RunAnsibleRequest'
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: 执行日志流（stream）
+          schema:
+            type: string
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Ansible 执行失败
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: 执行 Ansible Playbook
+      tags:
+      - 自动化部署
+  /compose/delete:
+    post:
+      consumes:
+      - application/json
+      description: 删除指定 Compose 应用及其目录
+      parameters:
+      - description: Compose 应用名称
+        in: body
+        name: compose
+        required: true
+        schema:
+          $ref: '#/definitions/models.ComposeActionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 删除成功
+          schema:
+            $ref: '#/definitions/models.SuccessResponse'
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: 删除失败
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: 删除 Compose 应用
+      tags:
+      - Compose管理
+  /compose/list:
+    get:
+      description: 列出当前存在的所有 Compose 应用
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功返回 Compose 应用列表
+          schema:
+            $ref: '#/definitions/models.ListComposeResponse'
+        "500":
+          description: 读取目录失败
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: 获取 Compose 应用列表
+      tags:
+      - Compose管理
+  /compose/start:
+    post:
+      consumes:
+      - application/json
+      description: 通过应用名称启动对应 Compose 应用
+      parameters:
+      - description: Compose 应用名称
+        in: body
+        name: compose
+        required: true
+        schema:
+          $ref: '#/definitions/models.ComposeActionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 启动成功
+          schema:
+            $ref: '#/definitions/models.SuccessResponse'
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: 启动失败
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: 启动 Compose 应用
+      tags:
+      - Compose管理
+  /compose/status:
+    get:
+      description: 查看各 Compose 应用包含的容器及运行状态
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功返回 Compose 容器状态
+          schema:
+            $ref: '#/definitions/models.ComposeStatusResponse'
+        "500":
+          description: Docker client 初始化或容器列表失败
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: 获取 Compose 应用状态
+      tags:
+      - Compose管理
+  /compose/stop:
+    post:
+      consumes:
+      - application/json
+      description: 通过应用名称停止对应 Compose 应用
+      parameters:
+      - description: Compose 应用名称
+        in: body
+        name: compose
+        required: true
+        schema:
+          $ref: '#/definitions/models.ComposeActionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 停止成功
+          schema:
+            $ref: '#/definitions/models.SuccessResponse'
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: 停止失败
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: 停止 Compose 应用
+      tags:
+      - Compose管理
+  /compose/upload:
+    post:
+      consumes:
+      - multipart/form-data
+      description: 上传并保存 Docker Compose 文件
+      parameters:
+      - description: Compose 文件名称
+        in: formData
+        name: name
+        required: true
         type: string
-      responses: {}
-      summary: 获取文件列表
+      - description: Compose 文件 (YAML格式)
+        in: formData
+        name: compose_file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 上传成功
+          schema:
+            $ref: '#/definitions/models.SuccessResponse'
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: 上传 Compose 文件
+      tags:
+      - Compose管理
+  /container/{id}/logs/ws:
+    get:
+      description: 通过 WebSocket 连接获取指定容器的实时日志流，连接后服务器持续推送日志内容
+      parameters:
+      - description: 容器ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - text/plain
+      responses:
+        "101":
+          description: WebSocket 连接已建立，开始推送日志
+          schema:
+            type: string
+        "500":
+          description: Docker client 初始化失败 或 WebSocket 升级失败
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: 实时获取容器日志
+      tags:
+      - 容器管理
+  /container/{id}/start:
+    post:
+      description: 启动指定容器
+      parameters:
+      - description: 容器ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: 成功启动容器
+          schema:
+            $ref: '#/definitions/models.SuccessResponse'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: 启动容器
+      tags:
+      - 容器管理
+  /container/{id}/stop:
+    post:
+      description: 通过容器ID停止正在运行的容器
+      parameters:
+      - description: 容器ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: 成功停止容器
+          schema:
+            $ref: '#/definitions/models.SuccessResponse'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: 停止容器
+      tags:
+      - 容器管理
+  /container/create:
+    post:
+      consumes:
+      - application/json
+      description: 创建一个新的 Docker 容器，支持设置端口映射、卷挂载、环境变量、资源限制等
+      parameters:
+      - description: 创建容器请求参数
+        in: body
+        name: container
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateContainerRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 创建成功返回容器ID
+          schema:
+            $ref: '#/definitions/models.CreateContainerResponse'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: 创建容器
+      tags:
+      - 容器管理
+  /containers:
+    get:
+      description: 获取本机所有 Docker 容器的详细信息
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功返回容器列表
+          schema:
+            $ref: '#/definitions/models.ContainerListResponse'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: 获取容器列表
+      tags:
+      - 容器管理
+  /files/delete:
+    post:
+      consumes:
+      - application/json
+      description: 删除指定路径下的文件或目录
+      parameters:
+      - description: 删除文件参数
+        in: body
+        name: file
+        required: true
+        schema:
+          $ref: '#/definitions/models.FileDeleteRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 删除成功
+          schema:
+            $ref: '#/definitions/models.SuccessResponse'
+        "403":
+          description: 越权
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: 删除失败
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: 删除文件或文件夹
       tags:
       - 文件管理
+  /files/download:
+    get:
+      description: 下载指定路径文件
+      parameters:
+      - description: 文件路径
+        in: query
+        name: path
+        required: true
+        type: string
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: 文件流
+          schema:
+            type: file
+        "403":
+          description: 越权
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: 下载失败
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: 下载文件
+      tags:
+      - 文件管理
+  /files/mkdir:
+    post:
+      consumes:
+      - application/json
+      description: 在指定路径下创建新目录
+      parameters:
+      - description: 创建目录参数
+        in: body
+        name: dir
+        required: true
+        schema:
+          $ref: '#/definitions/models.MkdirRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 创建成功
+          schema:
+            $ref: '#/definitions/models.SuccessResponse'
+        "403":
+          description: 越权
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: 创建失败
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: 创建文件夹
+      tags:
+      - 文件管理
+  /files/upload:
+    post:
+      consumes:
+      - multipart/form-data
+      description: 上传文件到指定路径
+      parameters:
+      - description: 目标路径，默认基础目录
+        in: formData
+        name: path
+        type: string
+      - description: 上传文件
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 上传成功
+          schema:
+            $ref: '#/definitions/models.SuccessResponse'
+        "403":
+          description: 越权
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: 上传失败
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: 上传文件
+      tags:
+      - 文件管理
+schemes:
+- https
+securityDefinitions:
+  BearerToken:
+    description: '请输入 Bearer Token 认证，比如: Bearer eyJhbGciOi...'
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"

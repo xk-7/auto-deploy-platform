@@ -1,13 +1,41 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>API Docs</title>
+    <meta charset="UTF-8" />
+    <title>🚀 Auto Deploy Platform API</title>
+    <link rel="icon" href="https://your-company.com/logo.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
     <style>
-        body { margin: 0; padding: 0; }
+        body {
+            margin: 0;
+            background-color: #f9f9f9;
+        }
     </style>
 </head>
+
 <body>
-<redoc spec-url='/swagger/doc.json'></redoc>
-<script src="redoc.standalone.js"></script>
+<redoc
+        spec-url="/swagger/doc.json"
+        expand-responses="200,201"
+        scroll-y-offset="50"
+        suppress-warnings
+        options='{
+        "theme": {
+          "colors": {
+            "primary": { "main": "#4CAF50" },
+            "success": { "main": "#4CAF50" }
+          },
+          "typography": {
+            "fontFamily": "Segoe UI, Roboto, Arial"
+          }
+        },
+        "hideDownloadButton": true,
+        "hideLoading": true,
+        "requiredPropsFirst": true
+      }'
+></redoc>
+
+<script src="./redoc.standalone.js"></script>
 </body>
 </html>

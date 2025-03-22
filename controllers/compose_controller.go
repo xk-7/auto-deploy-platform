@@ -16,7 +16,18 @@ import (
 
 var composeBasePath = "./compose-files" // 📁 Compose 文件存储目录
 
-// ---------------- 上传 Compose ----------------
+// UploadCompose 上传 Docker Compose 文件
+// @Summary 上传 Compose 文件
+// @Description 上传并保存 Docker Compose 文件
+// @Tags Compose管理
+// @Accept multipart/form-data
+// @Produce json
+// @Param name formData string true "Compose 文件名称"
+// @Param compose_file formData file true "Compose 文件 (YAML格式)"
+// @Success 200 {object} models.SuccessResponse "上传成功"
+// @Failure 400 {object} models.ErrorResponse "参数错误"
+// @Failure 500 {object} models.ErrorResponse "服务器内部错误"
+// @Router /compose/upload [post]
 func UploadCompose(c *gin.Context) {
 	name := c.PostForm("name")
 	file, err := c.FormFile("compose_file")
@@ -32,7 +43,14 @@ func UploadCompose(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "上传成功"})
 }
 
-// ---------------- Compose 列表 ----------------
+// ListCompose 获取 Compose 应用列表
+// @Summary 获取 Compose 应用列表
+// @Description 列出当前存在的所有 Compose 应用
+// @Tags Compose管理
+// @Produce json
+// @Success 200 {object} models.ListComposeResponse "成功返回 Compose 应用列表"
+// @Failure 500 {object} models.ErrorResponse "读取目录失败"
+// @Router /compose/list [get]
 func ListCompose(c *gin.Context) {
 	entries, err := os.ReadDir(composeBasePath)
 	if err != nil {
@@ -48,7 +66,14 @@ func ListCompose(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"apps": apps})
 }
 
-// ---------------- Compose 状态 ----------------
+// ComposeStatus 获取 Compose 应用容器状态
+// @Summary 获取 Compose 应用状态
+// @Description 查看各 Compose 应用包含的容器及运行状态
+// @Tags Compose管理
+// @Produce json
+// @Success 200 {object} models.ComposeStatusResponse "成功返回 Compose 容器状态"
+// @Failure 500 {object} models.ErrorResponse "Docker client 初始化或容器列表失败"
+// @Router /compose/status [get]
 func ComposeStatus(c *gin.Context) {
 	cli, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
@@ -104,7 +129,17 @@ func ComposeStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"apps": result})
 }
 
-// ---------------- Start ----------------
+// StartCompose 启动 Compose 应用
+// @Summary 启动 Compose 应用
+// @Description 通过应用名称启动对应 Compose 应用
+// @Tags Compose管理
+// @Accept json
+// @Produce json
+// @Param compose body models.ComposeActionRequest true "Compose 应用名称"
+// @Success 200 {object} models.SuccessResponse "启动成功"
+// @Failure 400 {object} models.ErrorResponse "参数错误"
+// @Failure 500 {object} models.ErrorResponse "启动失败"
+// @Router /compose/start [post]
 func StartCompose(c *gin.Context) {
 	var req struct{ Name string }
 	c.BindJSON(&req)
@@ -115,7 +150,17 @@ func StartCompose(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Started"})
 }
 
-// ---------------- Stop ----------------
+// StopCompose 停止 Compose 应用
+// @Summary 停止 Compose 应用
+// @Description 通过应用名称停止对应 Compose 应用
+// @Tags Compose管理
+// @Accept json
+// @Produce json
+// @Param compose body models.ComposeActionRequest true "Compose 应用名称"
+// @Success 200 {object} models.SuccessResponse "停止成功"
+// @Failure 400 {object} models.ErrorResponse "参数错误"
+// @Failure 500 {object} models.ErrorResponse "停止失败"
+// @Router /compose/stop [post]
 func StopCompose(c *gin.Context) {
 	var req struct{ Name string }
 	c.BindJSON(&req)
@@ -126,7 +171,17 @@ func StopCompose(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Stopped"})
 }
 
-// ---------------- Delete ----------------
+// DeleteCompose 删除 Compose 应用
+// @Summary 删除 Compose 应用
+// @Description 删除指定 Compose 应用及其目录
+// @Tags Compose管理
+// @Accept json
+// @Produce json
+// @Param compose body models.ComposeActionRequest true "Compose 应用名称"
+// @Success 200 {object} models.SuccessResponse "删除成功"
+// @Failure 400 {object} models.ErrorResponse "参数错误"
+// @Failure 500 {object} models.ErrorResponse "删除失败"
+// @Router /compose/delete [post]
 func DeleteCompose(c *gin.Context) {
 	var req struct{ Name string }
 	c.BindJSON(&req)
@@ -135,7 +190,16 @@ func DeleteCompose(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Deleted"})
 }
 
-// ---------------- 日志 WebSocket ----------------
+// ComposeLogsWS 获取 Compose 应用日志 WebSocket
+// @Summary 获取 Compose 应用日志
+// @Description 通过 WebSocket 连接实时获取指定 Compose 应用的日志流
+// @Tags Compose管理
+// @Produce plain
+// @Param name query string true "Compose 应用名称"
+// @Success 101 {string} string "WebSocket 连接已建立，开始推送日志"
+// @Failure 400 {object} models.ErrorResponse "参数错误"
+// @Failure 500 {object} models.ErrorResponse "WebSocket 升级失败 或 日志启动失败"
+// @Router /compose/logs/ws [get]
 var upgrader = websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
 
 func ComposeLogsWS(c *gin.Context) {

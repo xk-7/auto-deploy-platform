@@ -13,13 +13,20 @@ import (
 	"github.com/swaggo/gin-swagger"
 )
 
-// @title 服务器平台 API 文档
+// @title Auto Deploy Platform API
 // @version 1.0
-// @description 文件上传、部署、Compose、文件管理接口文档
-// @contact.name AutoDeploy Team
+// @description 自动化部署平台接口文档，支持容器、Compose、文件、Ansible管理。
+// @contact.name Dev Team
+// @contact.url https://www.xkkk.online
 // @contact.email kliu4403@gmail.com
-// @host localhost:8081
+// @host api.xkkk.online
 // @BasePath /
+// @schemes https
+// @securityDefinitions.apikey BearerToken
+// @in header
+// @name Authorization
+// @description 请输入 Bearer Token 认证，比如: Bearer eyJhbGciOi...
+
 func main() {
 	config.InitConfig()
 
