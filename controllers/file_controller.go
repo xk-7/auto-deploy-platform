@@ -19,7 +19,12 @@ func InitFileConfig(dir string, allow bool) {
 	os.MkdirAll(baseDir, 0755)
 }
 
-// 列出文件
+// ListFiles 列出文件
+// @Summary 获取文件列表
+// @Description 获取指定路径下文件和目录
+// @Tags 文件管理
+// @Param path query string false "目录路径"
+// @Router /api/v1/files/list [get]
 func ListFiles(c *gin.Context) {
 	path := c.Query("path")
 	if path == "" {

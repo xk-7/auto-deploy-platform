@@ -13,15 +13,21 @@ import (
 	"github.com/swaggo/gin-swagger"
 )
 
-// @title 文件管理 API 文档
+// @title 服务器平台 API 文档
 // @version 1.0
-// @description 文件上传、下载、管理
+// @description 文件上传、部署、Compose、文件管理接口文档
+// @contact.name AutoDeploy Team
+// @contact.email kliu4403@gmail.com
+// @host localhost:8081
 // @BasePath /
 func main() {
 	config.InitConfig()
 
 	r := gin.Default()
+	// Redoc 页面
+	r.Static("/docs", "./static/redoc")
 
+	//swagger页面
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// Middlewares
