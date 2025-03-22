@@ -26,3 +26,10 @@ type MkdirRequest struct {
 	Path string `json:"path" example:"/data"`
 	Name string `json:"name" example:"new-folder"`
 }
+
+// FileConfigResponse 文件配置返回
+type FileConfigResponse struct {
+	BaseDir    string `json:"baseDir"`
+	AllowAll   bool   `json:"allowAll"`
+	ApiBaseUrl string `json:"apiBaseUrl"`
+}

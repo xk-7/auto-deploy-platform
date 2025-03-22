@@ -2,6 +2,7 @@ package v1
 
 import (
 	"auto-deploy-platform/controllers"
+	"fmt"
 	"github.com/gin-gonic/gin"
 )
 
@@ -30,11 +31,16 @@ func RegisterRoutes(r *gin.Engine) {
 		v1.GET("/ws/compose-logs", controllers.ComposeLogsWS)
 
 		// 🧩 文件管理
+		v1.GET("/files/config", controllers.GetFileConfig)
 		v1.GET("/files/list", controllers.ListFiles)
 		v1.POST("/files/upload", controllers.UploadFile)
 		v1.POST("/files/delete", controllers.DeleteFile)
 		v1.POST("/files/mkdir", controllers.Mkdir)
 		v1.GET("/files/download", controllers.DownloadFile)
+
+		for _, route := range r.Routes() {
+			fmt.Printf("%s -> %s\n", route.Method, route.Path)
+		}
 
 	}
 }

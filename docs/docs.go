@@ -65,6 +65,26 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/files/config": {
+            "get": {
+                "description": "返回默认基础目录和是否允许任意目录",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "文件管理"
+                ],
+                "summary": "获取文件管理配置",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.FileConfigResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/compose/delete": {
             "post": {
                 "description": "删除指定 Compose 应用及其目录",
@@ -831,6 +851,20 @@ const docTemplate = `{
                 "message": {
                     "type": "string",
                     "example": "Internal Server Error"
+                }
+            }
+        },
+        "models.FileConfigResponse": {
+            "type": "object",
+            "properties": {
+                "allowAll": {
+                    "type": "boolean"
+                },
+                "apiBaseUrl": {
+                    "type": "string"
+                },
+                "baseDir": {
+                    "type": "string"
                 }
             }
         },

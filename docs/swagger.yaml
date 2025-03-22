@@ -114,6 +114,15 @@ definitions:
         example: Internal Server Error
         type: string
     type: object
+  models.FileConfigResponse:
+    properties:
+      allowAll:
+        type: boolean
+      apiBaseUrl:
+        type: string
+      baseDir:
+        type: string
+    type: object
   models.FileDeleteRequest:
     properties:
       name:
@@ -228,6 +237,19 @@ paths:
       summary: 执行 Ansible Playbook
       tags:
       - 自动化部署
+  /api/v1/files/config:
+    get:
+      description: 返回默认基础目录和是否允许任意目录
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.FileConfigResponse'
+      summary: 获取文件管理配置
+      tags:
+      - 文件管理
   /compose/delete:
     post:
       consumes:

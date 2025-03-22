@@ -188,8 +188,10 @@
     let currentPath = "";
 
     async function loadConfig() {
-        let res = await fetch('/static/config.json');
+        let res = await fetch('/api/v1/files/config');
         CONFIG = await res.json();
+        CONFIG.apiBaseUrl = '/api/v1';  // ⭐补上这一行！！
+        console.log(CONFIG);
     }
 
     async function loadFiles(path = "") {
@@ -338,6 +340,7 @@
     window.onload = async function() {
         await loadConfig();
         await loadFiles();
+        await loadFiles(CONFIG.baseDir);
         highlightNav(); // 动态高亮
     }
 </script>

@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"auto-deploy-platform/models"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"os"
@@ -19,6 +20,21 @@ func InitFileConfig(dir string, allow bool) {
 	os.MkdirAll(baseDir, 0755)
 }
 
+// GetFileConfig 获取文件配置
+// @Summary 获取文件管理配置
+// @Description 返回默认基础目录和是否允许任意目录
+// @Tags 文件管理
+// @Produce json
+// @Success 200 {object} models.FileConfigResponse
+// @Router /api/v1/files/config [get]
+func GetFileConfig(c *gin.Context) {
+	c.JSON(http.StatusOK, models.FileConfigResponse{
+		BaseDir:    baseDir,
+		AllowAll:   allowAll,
+		ApiBaseUrl: "/api/v1", // 这里设置
+	})
+}
+
 // ListFiles 列出服务器目录文件
 // @Summary 获取文件列表
 // @Description 根据指定路径列出文件和目录，路径为空默认列出基础路径
@@ -29,11 +45,14 @@ func InitFileConfig(dir string, allow bool) {
 // @Failure 403 {object} models.ErrorResponse "越权操作"
 // @Failure 500 {object} models.ErrorResponse "读取目录失败"
 func ListFiles(c *gin.Context) {
-	path := c.Query("path")
+	path := filepath.Clean(c.Query("path"))
 	if path == "" {
 		path = baseDir
 	} else if !allowAll && !filepath.HasPrefix(path, baseDir) {
-		c.JSON(http.StatusForbidden, gin.H{"error": "越权操作"})
+		c.JSON(http.StatusForbidden, models.ErrorResponse{
+			Code:    403,
+			Message: "越权操作",
+		})
 		return
 	}
 
@@ -43,23 +62,30 @@ func ListFiles(c *gin.Context) {
 		os.MkdirAll(path, 0755)
 		files, err = os.ReadDir(path)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "无法读取目录"})
+			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+				Code:    500,
+				Message: "无法读取目录",
+			})
 			return
 		}
 	}
 
-	var list []gin.H
+	var list []models.FileInfo
 	for _, f := range files {
 		fi, _ := f.Info()
-		list = append(list, gin.H{
-			"name":     f.Name(),
-			"is_dir":   f.IsDir(),
-			"mode":     fi.Mode().Perm().String(),
-			"size":     fi.Size(),
-			"mod_time": fi.ModTime().Format("2006-01-02 15:04:05"),
+		list = append(list, models.FileInfo{
+			Name:    f.Name(),
+			IsDir:   f.IsDir(),
+			Mode:    fi.Mode().Perm().String(),
+			Size:    fi.Size(),
+			ModTime: fi.ModTime().Format("2006-01-02 15:04:05"),
 		})
 	}
-	c.JSON(http.StatusOK, gin.H{"files": list, "current": path})
+
+	c.JSON(http.StatusOK, models.ListFilesResponse{
+		Current: path,
+		Files:   list,
+	})
 }
 
 // UploadFile 上传文件
@@ -75,19 +101,41 @@ func ListFiles(c *gin.Context) {
 // @Failure 500 {object} models.ErrorResponse "上传失败"
 // @Router /files/upload [post]
 func UploadFile(c *gin.Context) {
-	path := c.PostForm("path")
+	path := filepath.Clean(c.PostForm("path"))
 	if path == "" {
 		path = baseDir
 	} else if !allowAll && !filepath.HasPrefix(path, baseDir) {
-		c.JSON(http.StatusForbidden, gin.H{"error": "越权"})
+		c.JSON(http.StatusForbidden, models.ErrorResponse{
+			Code:    403,
+			Message: "越权",
+		})
 		return
 	}
-	file, _ := c.FormFile("file")
+
+	file, err := c.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			Code:    500,
+			Message: "未选择文件",
+		})
+		return
+	}
+
 	saveDir := filepath.Join(path)
 	os.MkdirAll(saveDir, 0755)
 	savePath := filepath.Join(saveDir, file.Filename)
-	c.SaveUploadedFile(file, savePath)
-	c.JSON(http.StatusOK, gin.H{"message": "上传成功"})
+	if err := c.SaveUploadedFile(file, savePath); err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			Code:    500,
+			Message: "上传失败",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.SuccessResponse{
+		Code:    200,
+		Message: "上传成功",
+	})
 }
 
 // DeleteFile 删除文件/文件夹
@@ -102,18 +150,33 @@ func UploadFile(c *gin.Context) {
 // @Failure 500 {object} models.ErrorResponse "删除失败"
 // @Router /files/delete [post]
 func DeleteFile(c *gin.Context) {
-	var req struct {
-		Path string `json:"path"`
-		Name string `json:"name"`
-	}
-	c.BindJSON(&req)
-	fullPath := filepath.Join(req.Path, req.Name)
-	if !allowAll && !filepath.HasPrefix(fullPath, baseDir) {
-		c.JSON(http.StatusForbidden, gin.H{"error": "越权"})
+	var req models.FileDeleteRequest
+	if err := c.ShouldBindJSON(&req); err != nil || req.Name == "" {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Code:    400,
+			Message: "参数错误",
+		})
 		return
 	}
-	os.RemoveAll(fullPath)
-	c.JSON(http.StatusOK, gin.H{"message": "删除成功"})
+	fullPath := filepath.Clean(filepath.Join(req.Path, req.Name))
+	if !allowAll && !filepath.HasPrefix(fullPath, baseDir) {
+		c.JSON(http.StatusForbidden, models.ErrorResponse{
+			Code:    403,
+			Message: "越权",
+		})
+		return
+	}
+	if err := os.RemoveAll(fullPath); err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			Code:    500,
+			Message: "删除失败",
+		})
+		return
+	}
+	c.JSON(http.StatusOK, models.SuccessResponse{
+		Code:    200,
+		Message: "删除成功",
+	})
 }
 
 // Mkdir 创建文件夹
@@ -128,18 +191,33 @@ func DeleteFile(c *gin.Context) {
 // @Failure 500 {object} models.ErrorResponse "创建失败"
 // @Router /files/mkdir [post]
 func Mkdir(c *gin.Context) {
-	var req struct {
-		Path string `json:"path"`
-		Name string `json:"name"`
-	}
-	c.BindJSON(&req)
-	fullPath := filepath.Join(req.Path, req.Name)
-	if !allowAll && !filepath.HasPrefix(fullPath, baseDir) {
-		c.JSON(http.StatusForbidden, gin.H{"error": "越权"})
+	var req models.MkdirRequest
+	if err := c.ShouldBindJSON(&req); err != nil || req.Name == "" {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Code:    400,
+			Message: "参数错误",
+		})
 		return
 	}
-	os.MkdirAll(fullPath, 0755)
-	c.JSON(http.StatusOK, gin.H{"message": "创建成功"})
+	fullPath := filepath.Clean(filepath.Join(req.Path, req.Name))
+	if !allowAll && !filepath.HasPrefix(fullPath, baseDir) {
+		c.JSON(http.StatusForbidden, models.ErrorResponse{
+			Code:    403,
+			Message: "越权",
+		})
+		return
+	}
+	if err := os.MkdirAll(fullPath, 0755); err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			Code:    500,
+			Message: "创建失败",
+		})
+		return
+	}
+	c.JSON(http.StatusOK, models.SuccessResponse{
+		Code:    200,
+		Message: "创建成功",
+	})
 }
 
 // DownloadFile 下载文件
@@ -153,9 +231,12 @@ func Mkdir(c *gin.Context) {
 // @Failure 500 {object} models.ErrorResponse "下载失败"
 // @Router /files/download [get]
 func DownloadFile(c *gin.Context) {
-	path := c.Query("path")
+	path := filepath.Clean(c.Query("path"))
 	if !allowAll && !filepath.HasPrefix(path, baseDir) {
-		c.JSON(http.StatusForbidden, gin.H{"error": "越权"})
+		c.JSON(http.StatusForbidden, models.ErrorResponse{
+			Code:    403,
+			Message: "越权",
+		})
 		return
 	}
 	c.FileAttachment(path, filepath.Base(path))
