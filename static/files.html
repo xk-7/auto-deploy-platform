@@ -4,8 +4,12 @@
     <meta charset="UTF-8">
     <title>文件管理</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Bootstrap 5 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Animate.css 引入 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+
     <style>
         body {
             padding-top: 70px;
@@ -91,10 +95,44 @@
             border-radius: 6px !important;
         }
 
+        /* ---- 动画增强 ---- */
+        .file-row {
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.4s ease;
+        }
+        .file-row.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .fade-in {
+            animation: fadeIn 0.5s forwards;
+        }
+        .fade-out {
+            animation: fadeOut 0.3s forwards;
+        }
+        @keyframes fadeIn {
+            from {opacity: 0;}
+            to {opacity: 1;}
+        }
+        @keyframes fadeOut {
+            from {opacity: 1;}
+            to {opacity: 0;}
+        }
+        .btn:active {
+            transform: scale(0.95);
+            transition: transform 0.1s;
+        }
+        .modal.fade .modal-dialog {
+            transform: translateY(-30px);
+            transition: all 0.4s ease-out;
+        }
+        .modal.show .modal-dialog {
+            transform: translateY(0);
+        }
     </style>
 </head>
 <body>
-
 <!-- Navbar -->
 <nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm fixed-top">
     <div class="container-fluid">
@@ -108,14 +146,14 @@
                 <li class="nav-item"><a class="nav-link nav-link-custom" href="/static/containers.html">📦 Containers</a></li>
                 <li class="nav-item"><a class="nav-link nav-link-custom" href="/static/containers-create.html">🚀 Deploy</a></li>
                 <li class="nav-item"><a class="nav-link nav-link-custom" href="/static/compose.html">🧩 Compose</a></li>
-                <li class="nav-item"><a class="nav-link nav-link-custom" href="/static/files.html">📂 File Manager</a></li>
+                <li class="nav-item"><a class="nav-link nav-link-custom active" href="/static/files.html">📂 File Manager</a></li>
             </ul>
         </div>
     </div>
 </nav>
 
 <!-- Main -->
-<div class="container mt-4">
+<div class="container mt-4 animate__animated animate__fadeIn">
     <h1 class="mb-3"><i class="fas fa-folder text-warning me-2"></i> 文件管理</h1>
 
     <!-- Breadcrumb -->
@@ -156,12 +194,13 @@
         </table>
     </div>
 </div>
-
 <!-- Upload Modal -->
 <div class="modal fade" id="uploadModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header"><h5 class="modal-title">上传文件</h5></div>
+        <div class="modal-content shadow-lg rounded-3">
+            <div class="modal-header"><h5 class="modal-title">上传文件</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
             <div class="modal-body">
                 <input type="file" id="upload-file" class="form-control mb-3">
                 <button class="btn btn-success w-100" onclick="doUpload()">上传</button>
@@ -173,8 +212,10 @@
 <!-- Mkdir Modal -->
 <div class="modal fade" id="mkdirModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header"><h5 class="modal-title">新建文件夹</h5></div>
+        <div class="modal-content shadow-lg rounded-3">
+            <div class="modal-header"><h5 class="modal-title">新建文件夹</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
             <div class="modal-body">
                 <input type="text" id="mkdir-name" class="form-control mb-3" placeholder="文件夹名称">
                 <button class="btn btn-primary w-100" onclick="doMkdir()">创建</button>
@@ -186,8 +227,10 @@
 <!-- 重命名 Modal -->
 <div class="modal fade" id="renameModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header"><h5 class="modal-title">重命名</h5></div>
+        <div class="modal-content shadow-lg rounded-3">
+            <div class="modal-header"><h5 class="modal-title">重命名</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
             <div class="modal-body">
                 <input type="text" id="rename-new-name" class="form-control mb-3" placeholder="新名称">
                 <button class="btn btn-primary w-100" onclick="doRename()">确定</button>
@@ -199,8 +242,10 @@
 <!-- 文件预览 Modal -->
 <div class="modal fade" id="viewModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content">
-            <div class="modal-header"><h5 class="modal-title">文件内容预览</h5></div>
+        <div class="modal-content shadow-lg rounded-3">
+            <div class="modal-header"><h5 class="modal-title">文件内容预览</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
             <div class="modal-body">
                 <textarea id="view-content" class="form-control" rows="15"></textarea>
                 <button class="btn btn-success mt-3 w-100" onclick="saveFile()">保存</button>
@@ -208,11 +253,10 @@
         </div>
     </div>
 </div>
-
 <!-- 权限修改 Modal -->
 <div class="modal fade" id="chmodModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
+        <div class="modal-content shadow-lg rounded-3">
             <div class="modal-header">
                 <h5 class="modal-title">修改权限</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -225,60 +269,68 @@
     </div>
 </div>
 
-
-    <!-- 压缩 Modal -->
-    <div class="modal fade" id="compressModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header"><h5 class="modal-title">压缩文件</h5></div>
-                <div class="modal-body">
-                    <input type="text" id="compress-name" class="form-control mb-3" placeholder="压缩包名 (例如 archive.zip)">
-                    <button class="btn btn-primary w-100" onclick="doCompress()">开始压缩</button>
-                </div>
+<!-- 压缩 Modal -->
+<div class="modal fade" id="compressModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg rounded-3">
+            <div class="modal-header"><h5 class="modal-title">压缩文件</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="compress-name" class="form-control mb-3" placeholder="压缩包名 (如 archive.zip)">
+                <button class="btn btn-primary w-100" onclick="doCompress()">开始压缩</button>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- 解压 Modal -->
-    <div class="modal fade" id="extractModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header"><h5 class="modal-title">解压文件</h5></div>
-                <div class="modal-body">
-                    <input type="file" id="extract-file" class="form-control mb-3">
-                    <button class="btn btn-success w-100" onclick="doExtract()">开始解压</button>
-                </div>
+<!-- 解压 Modal -->
+<div class="modal fade" id="extractModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg rounded-3">
+            <div class="modal-header"><h5 class="modal-title">解压文件</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="file" id="extract-file" class="form-control mb-3">
+                <button class="btn btn-success w-100" onclick="doExtract()">开始解压</button>
             </div>
         </div>
     </div>
+</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-    <script>
+<!-- 引入JS库 -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+<!-- SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
     let CONFIG = {};
     let currentPath = "";
-    let renameTarget = ""; // 当前要重命名的文件名
-    let viewFilePath = ""; // 当前预览文件完整路径
-    let selectedFiles = new Set(); // 批量删除选中的文件
+    let renameTarget = "";
+    let viewFilePath = "";
+    let selectedFiles = new Set();
 
-
+    // 读取配置
     async function loadConfig() {
         let res = await fetch('/api/v1/files/config');
         CONFIG = await res.json();
-        CONFIG.apiBaseUrl = '/api/v1';  // ⭐补上这一行！！
+        CONFIG.apiBaseUrl = '/api/v1';
         console.log(CONFIG);
     }
 
+    // 核心加载文件 & 列表动画
     async function loadFiles(path = "") {
+        let table = document.getElementById("file-list");
+        table.classList.remove("fade-in");
+        table.classList.add("fade-out");
+
         let url = `${CONFIG.apiBaseUrl}/files/list`;
         if (path) url += `?path=${encodeURIComponent(path)}`;
 
         const res = await fetch(url);
         const data = await res.json();
 
-        const table = document.getElementById("file-list");
         table.innerHTML = "";
 
         currentPath = data.current;
@@ -286,13 +338,13 @@
         updateBreadcrumb();
 
         if (currentPath !== CONFIG.baseDir) {
-            table.innerHTML += `<tr>
-                <td><a href="javascript:void(0)" onclick="goUp()"><i class="fas fa-level-up-alt me-1 text-primary"></i> 上一级</a></td>
-                <td>-</td><td>-</td><td>-</td><td>-</td>
-            </tr>`;
+            table.innerHTML += `<tr class="file-row show animate__animated animate__fadeIn">
+            <td><a href="javascript:void(0)" onclick="goUp()"><i class="fas fa-level-up-alt me-1 text-primary"></i> 上一级</a></td>
+            <td>-</td><td>-</td><td>-</td><td>-</td>
+        </tr>`;
         }
 
-        data.files.forEach(file => {
+        data.files.forEach((file, index) => {
             let icon = file.is_dir ? `<i class="fas fa-folder file-icon text-warning"></i>` : `<i class="fas fa-file file-icon text-secondary"></i>`;
             let checkbox = `<input type="checkbox" class="form-check-input me-1" onchange="toggleSelect('${file.name}', this.checked)">`;
 
@@ -308,14 +360,23 @@
                 action += `<button class="btn btn-info btn-sm me-1" onclick="viewFile('${file.name}')">预览</button>`;
             }
 
-            table.innerHTML += `<tr>
-        <td>${checkbox}${icon} ${file.name}</td>
-        <td>${file.mode}</td>
-        <td>${file.is_dir ? "-" : formatSize(file.size)}</td>
-        <td>${file.mod_time}</td>
-        <td>${action}</td>
-    </tr>`;
+            let tr = document.createElement("tr");
+            tr.classList.add("file-row", "animate__animated");
+            tr.innerHTML = `
+            <td>${checkbox}${icon} ${file.name}</td>
+            <td>${file.mode}</td>
+            <td>${file.is_dir ? "-" : formatSize(file.size)}</td>
+            <td>${file.mod_time}</td>
+            <td>${action}</td>
+        `;
+            table.appendChild(tr);
+            setTimeout(() => {
+                tr.classList.add("show", "animate__fadeInUp");
+            }, index * 50);
         });
+
+        table.classList.remove("fade-out");
+        table.classList.add("fade-in");
     }
 
     function formatSize(bytes) {
@@ -337,66 +398,7 @@
         loadFiles(parts.join("/"));
     }
 
-    async function deleteFile(name) {
-        if (!confirm(`确认删除 ${name} 吗？`)) return;
-        await fetch(`${CONFIG.apiBaseUrl}/files/delete`, {
-            method: "POST",
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({path: currentPath, name})
-        });
-        loadFiles(currentPath);
-    }
-
-    function downloadFile(name) {
-        let url = `${CONFIG.apiBaseUrl}/files/download?path=${encodeURIComponent(currentPath + "/" + name)}`;
-        window.open(url, "_blank");
-    }
-
-    function openUpload() {
-        let modal = new bootstrap.Modal(document.getElementById('uploadModal'));
-        modal.show();
-    }
-
-    async function doUpload() {
-        let fileInput = document.getElementById("upload-file");
-        let file = fileInput.files[0];
-        if (!file) return;
-        let formData = new FormData();
-        formData.append("file", file);
-        formData.append("path", currentPath);
-        await fetch(`${CONFIG.apiBaseUrl}/files/upload`, {method: "POST", body: formData});
-        bootstrap.Modal.getInstance(document.getElementById('uploadModal')).hide();
-        loadFiles(currentPath);
-    }
-
-    function openMkdir() {
-        let modal = new bootstrap.Modal(document.getElementById('mkdirModal'));
-        modal.show();
-    }
-
-    async function doMkdir() {
-        let name = document.getElementById("mkdir-name").value.trim();
-        if (!name) return;
-        await fetch(`${CONFIG.apiBaseUrl}/files/mkdir`, {
-            method: "POST",
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({path: currentPath, name})
-        });
-        bootstrap.Modal.getInstance(document.getElementById('mkdirModal')).hide();
-        loadFiles(currentPath);
-    }
-
-    function jumpPath() {
-        let p = document.getElementById("path-input").value.trim();
-        loadFiles(p);
-    }
-
-    function handleKey(event) {
-        if (event.key === 'Enter') {
-            jumpPath();
-        }
-    }
-
+    // Breadcrumb 更新
     function updateBreadcrumb() {
         const breadcrumb = document.getElementById("breadcrumb");
         breadcrumb.innerHTML = `<li class="breadcrumb-item"><a href="javascript:void(0)" onclick="loadFiles('/')">🏠 Root</a></li>`;
@@ -408,73 +410,121 @@
             parts.forEach((p) => {
                 path += "/" + p;
                 breadcrumb.innerHTML += `<li class="breadcrumb-item">
-                    <a href="javascript:void(0)" onclick="loadFiles('${path}')">${p}</a>
-                </li>`;
+                <a href="javascript:void(0)" onclick="loadFiles('${path}')">${p}</a>
+            </li>`;
             });
         }
     }
-   //重命名相关函数
+    // ==========  文件操作 ==========
+
+    function downloadFile(name) {
+        let url = `${CONFIG.apiBaseUrl}/files/download?path=${encodeURIComponent(currentPath + "/" + name)}`;
+        window.open(url, "_blank");
+    }
+
+    // 上传
+    function openUpload() {
+        new bootstrap.Modal(document.getElementById('uploadModal')).show();
+    }
+    async function doUpload() {
+        let fileInput = document.getElementById("upload-file");
+        let file = fileInput.files[0];
+        if (!file) return;
+        let formData = new FormData();
+        formData.append("file", file);
+        formData.append("path", currentPath);
+        await fetch(`${CONFIG.apiBaseUrl}/files/upload`, {method: "POST", body: formData});
+        Swal.fire({icon: 'success', title: '上传成功', timer: 1000, showConfirmButton: false});
+        bootstrap.Modal.getInstance(document.getElementById('uploadModal')).hide();
+        loadFiles(currentPath);
+    }
+
+    // 新建目录
+    function openMkdir() {
+        new bootstrap.Modal(document.getElementById('mkdirModal')).show();
+    }
+    async function doMkdir() {
+        let name = document.getElementById("mkdir-name").value.trim();
+        if (!name) return;
+        await fetch(`${CONFIG.apiBaseUrl}/files/mkdir`, {
+            method: "POST",
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({path: currentPath, name})
+        });
+        Swal.fire({icon: 'success', title: '创建成功', timer: 1000, showConfirmButton: false});
+        bootstrap.Modal.getInstance(document.getElementById('mkdirModal')).hide();
+        loadFiles(currentPath);
+    }
+
+    // ========== 重命名 ==========
     function openRename(name) {
         renameTarget = name;
         document.getElementById("rename-new-name").value = "";
         new bootstrap.Modal(document.getElementById('renameModal')).show();
     }
-
     async function doRename() {
         let newName = document.getElementById("rename-new-name").value.trim();
-        if (!newName) return alert("新名称不能为空");
+        if (!newName) return Swal.fire("新名称不能为空", '', 'warning');
         let res = await fetch(`${CONFIG.apiBaseUrl}/files/rename`, {
             method: "POST",
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({path: currentPath, old_name: renameTarget, new_name: newName})
         });
-        let data = await res.json();
-        if (res.status !== 200) {
-            alert(data.message || "重命名失败");
-            return;
+        if (res.status === 200) {
+            Swal.fire("重命名成功", '', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('renameModal')).hide();
+            loadFiles(currentPath);
+        } else {
+            let data = await res.json();
+            Swal.fire("失败", data.message, 'error');
         }
-        bootstrap.Modal.getInstance(document.getElementById('renameModal')).hide();
+    }
+
+    // ========== 删除 ==========
+    async function deleteFile(name) {
+        let confirm = await Swal.fire({title: `确认删除 ${name} 吗？`, showCancelButton: true});
+        if (!confirm.isConfirmed) return;
+        await fetch(`${CONFIG.apiBaseUrl}/files/delete`, {
+            method: "POST",
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({path: currentPath, name})
+        });
+        Swal.fire("删除成功", '', 'success');
         loadFiles(currentPath);
     }
-    //批量删除逻辑
+
+    // 批量删除
     function toggleSelect(name, checked) {
         if (checked) selectedFiles.add(name);
         else selectedFiles.delete(name);
     }
-
     async function batchDelete() {
-        if (selectedFiles.size === 0) {
-            alert("请先选择文件或目录");
-            return;
-        }
-        if (!confirm(`确认批量删除 ${selectedFiles.size} 个文件/目录？`)) return;
+        if (selectedFiles.size === 0) return Swal.fire("请选择文件", '', 'warning');
+        let confirm = await Swal.fire({title: `确认批量删除 ${selectedFiles.size} 个文件？`, showCancelButton: true});
+        if (!confirm.isConfirmed) return;
         let names = Array.from(selectedFiles);
-        let res = await fetch(`${CONFIG.apiBaseUrl}/files/batch-delete`, {
+        await fetch(`${CONFIG.apiBaseUrl}/files/batch-delete`, {
             method: "POST",
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({path: currentPath, names})
         });
-        let data = await res.json();
-        if (res.status !== 200) {
-            alert(data.message || "批量删除失败");
-            return;
-        }
+        Swal.fire("删除成功", '', 'success');
         selectedFiles.clear();
         loadFiles(currentPath);
     }
-    //文件预览&&编辑保存
+
+    // ========== 文件预览 ==========
     async function viewFile(name) {
         viewFilePath = currentPath.endsWith("/") ? currentPath + name : currentPath + "/" + name;
         let res = await fetch(`${CONFIG.apiBaseUrl}/files/view?path=${encodeURIComponent(viewFilePath)}`);
         let data = await res.json();
         if (res.status !== 200) {
-            alert(data.message || "读取失败");
+            Swal.fire("读取失败", data.message, 'error');
             return;
         }
         document.getElementById("view-content").value = data.content;
         new bootstrap.Modal(document.getElementById('viewModal')).show();
     }
-
     async function saveFile() {
         let content = document.getElementById("view-content").value;
         let res = await fetch(`${CONFIG.apiBaseUrl}/files/save`, {
@@ -482,32 +532,25 @@
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({path: viewFilePath, content})
         });
-        let data = await res.json();
-        if (res.status !== 200) {
-            alert(data.message || "保存失败");
-            return;
+        if (res.status === 200) {
+            Swal.fire("保存成功", '', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('viewModal')).hide();
+        } else {
+            let data = await res.json();
+            Swal.fire("保存失败", data.message, 'error');
         }
-        Swal.fire({
-            icon: 'success',
-            title: '保存成功',
-            showConfirmButton: false,
-            timer: 1500
-        });
-        bootstrap.Modal.getInstance(document.getElementById('viewModal')).hide();
     }
-    //权限修改
-    let chmodTarget = "";
 
+    // ========== 权限修改 ==========
+    let chmodTarget = "";
     function openChmod(name) {
         chmodTarget = name;
         document.getElementById("chmod-mode").value = "";
         new bootstrap.Modal(document.getElementById('chmodModal')).show();
     }
-
     async function doChmod() {
         let mode = document.getElementById("chmod-mode").value.trim();
         if (!mode) return Swal.fire("权限不能为空", '', 'warning');
-
         let res = await fetch(`${CONFIG.apiBaseUrl}/files/chmod`, {
             method: "POST",
             headers: {'Content-Type': 'application/json'},
@@ -523,39 +566,23 @@
         }
     }
 
-    //批量压缩
+    // ========== 压缩 ==========
     function openCompress() {
-        if (selectedFiles.size === 0) {
-            Swal.fire("请选择文件", '', 'warning');
-            return;
-        }
+        if (selectedFiles.size === 0) return Swal.fire("请选择文件", '', 'warning');
         document.getElementById("compress-name").value = "archive.zip";
         new bootstrap.Modal(document.getElementById('compressModal')).show();
     }
-
     async function doCompress() {
         let archiveName = document.getElementById("compress-name").value.trim();
         if (!archiveName.endsWith(".zip")) return Swal.fire("文件名需以 .zip 结尾", '', 'warning');
-
         let names = Array.from(selectedFiles);
-
-        // 🔥 增加 loading 提示
-        Swal.fire({
-            title: '正在压缩，请稍候...',
-            allowOutsideClick: false,
-            didOpen: () => {
-                Swal.showLoading();
-            }
-        });
-
+        Swal.fire({title: '压缩中...', allowOutsideClick: false, didOpen: () => Swal.showLoading()});
         let res = await fetch(`${CONFIG.apiBaseUrl}/files/compress`, {
             method: "POST",
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({path: currentPath, names, type: "zip"})
         });
-
-        Swal.close(); // 关闭加载
-
+        Swal.close();
         if (res.status === 200) {
             Swal.fire("压缩成功", '', 'success');
             bootstrap.Modal.getInstance(document.getElementById('compressModal')).hide();
@@ -566,12 +593,10 @@
         }
     }
 
-    //解压zip
+    // ========== 解压 ==========
     function openExtract() {
-        let modal = new bootstrap.Modal(document.getElementById('extractModal'));
-        modal.show();
+        new bootstrap.Modal(document.getElementById('extractModal')).show();
     }
-
     async function doExtract() {
         let fileInput = document.getElementById("extract-file");
         let file = fileInput.files[0];
@@ -579,11 +604,7 @@
         let formData = new FormData();
         formData.append("file", file);
         formData.append("path", currentPath);
-
-        let res = await fetch(`${CONFIG.apiBaseUrl}/files/extract`, {
-            method: "POST",
-            body: formData
-        });
+        let res = await fetch(`${CONFIG.apiBaseUrl}/files/extract`, { method: "POST", body: formData });
         if (res.status === 200) {
             Swal.fire("解压成功", '', 'success');
             bootstrap.Modal.getInstance(document.getElementById('extractModal')).hide();
@@ -594,9 +615,16 @@
         }
     }
 
+    // 路径跳转
+    function jumpPath() {
+        let p = document.getElementById("path-input").value.trim();
+        loadFiles(p);
+    }
+    function handleKey(event) {
+        if (event.key === 'Enter') jumpPath();
+    }
 
-
-
+    // 高亮
     function highlightNav() {
         let navLinks = document.querySelectorAll('.nav-link-custom');
         let currentPath = window.location.pathname;
@@ -607,11 +635,11 @@
         });
     }
 
+    // 初始加载
     window.onload = async function() {
         await loadConfig();
-        await loadFiles();
         await loadFiles(CONFIG.baseDir);
-        highlightNav(); // 动态高亮
+        highlightNav();
     }
 </script>
 
