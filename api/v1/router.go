@@ -43,6 +43,9 @@ func RegisterRoutes(r *gin.Engine) {
 		v1.POST("/files/chmod", controllers.ChmodFile)
 		v1.POST("/files/compress", controllers.CompressFiles)
 		v1.POST("/files/extract", controllers.ExtractZip)
+		v1.POST("/files/move", controllers.MoveFile)
+		v1.POST("/files/batch-download", controllers.BatchDownload)
+		v1.POST("/files/batch-chmod", controllers.BatchChmod)
 
 		//for _, route := range r.Routes() {
 		//	fmt.Printf("%s -> %s\n", route.Method, route.Path)

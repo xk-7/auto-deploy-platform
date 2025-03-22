@@ -72,3 +72,22 @@ type CompressRequest struct {
 type ExtractRequest struct {
 	Path string `json:"path" example:"/data"`
 }
+
+// 移动文件
+type MoveFileRequest struct {
+	SourcePath string `json:"source_path" example:"/tmp/file-manager/a.txt"`
+	TargetDir  string `json:"target_dir" example:"/tmp/file-manager/subfolder"`
+}
+
+// 批量下载
+type BatchDownloadRequest struct {
+	Path  string   `json:"path" example:"/tmp/file-manager"`
+	Names []string `json:"names" example:"[\"a.txt\", \"b.txt\"]"`
+}
+
+// 批量权限修改
+type BatchChmodRequest struct {
+	Path  string   `json:"path" example:"/tmp/file-manager"`
+	Names []string `json:"names" example:"[\"file1\", \"folder1\"]"`
+	Mode  string   `json:"mode" example:"755"`
+}

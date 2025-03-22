@@ -549,3 +549,88 @@ func ExtractZip(c *gin.Context) {
 
 	c.JSON(http.StatusOK, models.SuccessResponse{Code: 200, Message: "解压成功"})
 }
+
+// MoveFile 移动文件
+// @Summary 移动文件或目录
+// @Description 将指定文件或目录移动到目标目录
+// @Tags 文件管理
+// @Accept json
+// @Produce json
+// @Param move body models.MoveFileRequest true "移动文件参数"
+// @Success 200 {object} models.SuccessResponse "移动成功"
+// @Failure 400 {object} models.ErrorResponse "请求参数错误"
+// @Failure 500 {object} models.ErrorResponse "移动失败"
+// @Router /files/move [post]
+func MoveFile(c *gin.Context) {
+	var req models.MoveFileRequest
+	c.BindJSON(&req)
+	newPath := filepath.Join(req.TargetDir, filepath.Base(req.SourcePath))
+	err := os.Rename(req.SourcePath, newPath)
+	if err != nil {
+		c.JSON(500, gin.H{"message": "移动失败", "error": err.Error()})
+		return
+	}
+	c.JSON(200, gin.H{"message": "移动成功"})
+}
+
+// BatchDownload 批量打包下载
+// @Summary 批量下载文件
+// @Description 选中多个文件，打包为 zip 下载
+// @Tags 文件管理
+// @Accept json
+// @Produce application/zip
+// @Param download body models.BatchDownloadRequest true "批量下载参数"
+// @Success 200 {file} file "zip 文件"
+// @Failure 400 {object} models.ErrorResponse "参数错误"
+// @Failure 500 {object} models.ErrorResponse "下载失败"
+// @Router /files/batch-download [post]
+func BatchDownload(c *gin.Context) {
+	var req models.BatchDownloadRequest
+	c.BindJSON(&req)
+	tmpZip := "/tmp/batch_download.zip"
+	zipFile, _ := os.Create(tmpZip)
+	defer zipFile.Close()
+	zipWriter := zip.NewWriter(zipFile)
+	defer zipWriter.Close()
+	for _, name := range req.Names {
+		fullPath := filepath.Join(req.Path, name)
+		file, err := os.Open(fullPath)
+		if err != nil {
+			continue
+		}
+		defer file.Close()
+		fi, _ := file.Stat()
+		header, _ := zip.FileInfoHeader(fi)
+		header.Name = name
+		writer, _ := zipWriter.CreateHeader(header)
+		io.Copy(writer, file)
+	}
+	c.Header("Content-Disposition", "attachment; filename=batch.zip")
+	c.File(tmpZip)
+}
+
+// BatchChmod 批量修改权限
+// @Summary 批量修改文件权限
+// @Description 一次性修改多个文件/目录的权限
+// @Tags 文件管理
+// @Accept json
+// @Produce json
+// @Param chmod body models.BatchChmodRequest true "批量权限修改参数"
+// @Success 200 {object} models.SuccessResponse "修改成功"
+// @Failure 400 {object} models.ErrorResponse "权限格式错误"
+// @Failure 500 {object} models.ErrorResponse "修改失败"
+// @Router /files/batch-chmod [post]
+func BatchChmod(c *gin.Context) {
+	var req models.BatchChmodRequest
+	c.BindJSON(&req)
+	modeInt, err := strconv.ParseUint(req.Mode, 8, 32)
+	if err != nil {
+		c.JSON(400, gin.H{"message": "权限格式错误"})
+		return
+	}
+	for _, name := range req.Names {
+		fullPath := filepath.Join(req.Path, name)
+		os.Chmod(fullPath, os.FileMode(modeInt))
+	}
+	c.JSON(200, gin.H{"message": "批量权限修改成功"})
+}

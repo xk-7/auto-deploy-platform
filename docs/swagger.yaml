@@ -1,5 +1,21 @@
 basePath: /
 definitions:
+  models.BatchChmodRequest:
+    properties:
+      mode:
+        example: "755"
+        type: string
+      names:
+        example:
+        - '["file1"'
+        - ' "folder1"]'
+        items:
+          type: string
+        type: array
+      path:
+        example: /tmp/file-manager
+        type: string
+    type: object
   models.BatchDeleteRequest:
     properties:
       names:
@@ -11,6 +27,19 @@ definitions:
         type: array
       path:
         example: /data
+        type: string
+    type: object
+  models.BatchDownloadRequest:
+    properties:
+      names:
+        example:
+        - '["a.txt"'
+        - ' "b.txt"]'
+        items:
+          type: string
+        type: array
+      path:
+        example: /tmp/file-manager
         type: string
     type: object
   models.ChmodRequest:
@@ -221,6 +250,15 @@ definitions:
         type: string
       path:
         example: /data
+        type: string
+    type: object
+  models.MoveFileRequest:
+    properties:
+      source_path:
+        example: /tmp/file-manager/a.txt
+        type: string
+      target_dir:
+        example: /tmp/file-manager/subfolder
         type: string
     type: object
   models.RenameRequest:
@@ -821,6 +859,66 @@ paths:
       summary: 获取容器列表
       tags:
       - 容器管理
+  /files/batch-chmod:
+    post:
+      consumes:
+      - application/json
+      description: 一次性修改多个文件/目录的权限
+      parameters:
+      - description: 批量权限修改参数
+        in: body
+        name: chmod
+        required: true
+        schema:
+          $ref: '#/definitions/models.BatchChmodRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 修改成功
+          schema:
+            $ref: '#/definitions/models.SuccessResponse'
+        "400":
+          description: 权限格式错误
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: 修改失败
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: 批量修改文件权限
+      tags:
+      - 文件管理
+  /files/batch-download:
+    post:
+      consumes:
+      - application/json
+      description: 选中多个文件，打包为 zip 下载
+      parameters:
+      - description: 批量下载参数
+        in: body
+        name: download
+        required: true
+        schema:
+          $ref: '#/definitions/models.BatchDownloadRequest'
+      produces:
+      - application/zip
+      responses:
+        "200":
+          description: zip 文件
+          schema:
+            type: file
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: 下载失败
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: 批量下载文件
+      tags:
+      - 文件管理
   /files/delete:
     post:
       consumes:
@@ -906,6 +1004,36 @@ paths:
           schema:
             $ref: '#/definitions/models.ErrorResponse'
       summary: 创建文件夹
+      tags:
+      - 文件管理
+  /files/move:
+    post:
+      consumes:
+      - application/json
+      description: 将指定文件或目录移动到目标目录
+      parameters:
+      - description: 移动文件参数
+        in: body
+        name: move
+        required: true
+        schema:
+          $ref: '#/definitions/models.MoveFileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 移动成功
+          schema:
+            $ref: '#/definitions/models.SuccessResponse'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: 移动失败
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: 移动文件或目录
       tags:
       - 文件管理
   /files/upload:

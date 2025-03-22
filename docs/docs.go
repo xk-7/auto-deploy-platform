@@ -860,6 +860,98 @@ const docTemplate = `{
                 }
             }
         },
+        "/files/batch-chmod": {
+            "post": {
+                "description": "一次性修改多个文件/目录的权限",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "文件管理"
+                ],
+                "summary": "批量修改文件权限",
+                "parameters": [
+                    {
+                        "description": "批量权限修改参数",
+                        "name": "chmod",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.BatchChmodRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "修改成功",
+                        "schema": {
+                            "$ref": "#/definitions/models.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "权限格式错误",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "修改失败",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/files/batch-download": {
+            "post": {
+                "description": "选中多个文件，打包为 zip 下载",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/zip"
+                ],
+                "tags": [
+                    "文件管理"
+                ],
+                "summary": "批量下载文件",
+                "parameters": [
+                    {
+                        "description": "批量下载参数",
+                        "name": "download",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.BatchDownloadRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "zip 文件",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "400": {
+                        "description": "参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "下载失败",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/files/delete": {
             "post": {
                 "description": "删除指定路径下的文件或目录",
@@ -993,6 +1085,52 @@ const docTemplate = `{
                 }
             }
         },
+        "/files/move": {
+            "post": {
+                "description": "将指定文件或目录移动到目标目录",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "文件管理"
+                ],
+                "summary": "移动文件或目录",
+                "parameters": [
+                    {
+                        "description": "移动文件参数",
+                        "name": "move",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.MoveFileRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "移动成功",
+                        "schema": {
+                            "$ref": "#/definitions/models.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "移动失败",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/files/upload": {
             "post": {
                 "description": "上传文件到指定路径",
@@ -1045,6 +1183,29 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "models.BatchChmodRequest": {
+            "type": "object",
+            "properties": {
+                "mode": {
+                    "type": "string",
+                    "example": "755"
+                },
+                "names": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "[\"file1\"",
+                        " \"folder1\"]"
+                    ]
+                },
+                "path": {
+                    "type": "string",
+                    "example": "/tmp/file-manager"
+                }
+            }
+        },
         "models.BatchDeleteRequest": {
             "type": "object",
             "properties": {
@@ -1061,6 +1222,25 @@ const docTemplate = `{
                 "path": {
                     "type": "string",
                     "example": "/data"
+                }
+            }
+        },
+        "models.BatchDownloadRequest": {
+            "type": "object",
+            "properties": {
+                "names": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "[\"a.txt\"",
+                        " \"b.txt\"]"
+                    ]
+                },
+                "path": {
+                    "type": "string",
+                    "example": "/tmp/file-manager"
                 }
             }
         },
@@ -1361,6 +1541,19 @@ const docTemplate = `{
                 "path": {
                     "type": "string",
                     "example": "/data"
+                }
+            }
+        },
+        "models.MoveFileRequest": {
+            "type": "object",
+            "properties": {
+                "source_path": {
+                    "type": "string",
+                    "example": "/tmp/file-manager/a.txt"
+                },
+                "target_dir": {
+                    "type": "string",
+                    "example": "/tmp/file-manager/subfolder"
                 }
             }
         },
