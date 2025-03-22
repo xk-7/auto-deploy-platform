@@ -1,5 +1,18 @@
 basePath: /
 definitions:
+  models.BatchDeleteRequest:
+    properties:
+      names:
+        example:
+        - '["file1.txt"'
+        - ' "folder2"]'
+        items:
+          type: string
+        type: array
+      path:
+        example: /data
+        type: string
+    type: object
   models.ComposeActionRequest:
     properties:
       name:
@@ -123,6 +136,11 @@ definitions:
       baseDir:
         type: string
     type: object
+  models.FileContentResponse:
+    properties:
+      content:
+        type: string
+    type: object
   models.FileDeleteRequest:
     properties:
       name:
@@ -179,6 +197,18 @@ definitions:
         example: /data
         type: string
     type: object
+  models.RenameRequest:
+    properties:
+      new_name:
+        example: file-renamed.txt
+        type: string
+      old_name:
+        example: file.txt
+        type: string
+      path:
+        example: /data
+        type: string
+    type: object
   models.RunAnsibleRequest:
     properties:
       inventory:
@@ -186,6 +216,15 @@ definitions:
         type: string
       playbook:
         example: site.yml
+        type: string
+    type: object
+  models.SaveFileRequest:
+    properties:
+      content:
+        example: 新的文件内容
+        type: string
+      path:
+        example: /data/file.txt
         type: string
     type: object
   models.SuccessResponse:
@@ -237,6 +276,39 @@ paths:
       summary: 执行 Ansible Playbook
       tags:
       - 自动化部署
+  /api/v1/files/batch-delete:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 批量删除参数
+        in: body
+        name: delete
+        required: true
+        schema:
+          $ref: '#/definitions/models.BatchDeleteRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 删除成功
+          schema:
+            $ref: '#/definitions/models.SuccessResponse'
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: 越权
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: 失败
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: 批量删除文件或文件夹
+      tags:
+      - 文件管理
   /api/v1/files/config:
     get:
       description: 返回默认基础目录和是否允许任意目录
@@ -248,6 +320,102 @@ paths:
           schema:
             $ref: '#/definitions/models.FileConfigResponse'
       summary: 获取文件管理配置
+      tags:
+      - 文件管理
+  /api/v1/files/rename:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 重命名参数
+        in: body
+        name: rename
+        required: true
+        schema:
+          $ref: '#/definitions/models.RenameRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 重命名成功
+          schema:
+            $ref: '#/definitions/models.SuccessResponse'
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: 越权
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: 失败
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: 重命名文件或文件夹
+      tags:
+      - 文件管理
+  /api/v1/files/save:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 保存内容参数
+        in: body
+        name: save
+        required: true
+        schema:
+          $ref: '#/definitions/models.SaveFileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 保存成功
+          schema:
+            $ref: '#/definitions/models.SuccessResponse'
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: 越权
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: 保存失败
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: 保存文件内容
+      tags:
+      - 文件管理
+  /api/v1/files/view:
+    get:
+      parameters:
+      - description: 文件完整路径
+        in: query
+        name: path
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 文件内容
+          schema:
+            $ref: '#/definitions/models.FileContentResponse'
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: 越权
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: 读取失败
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: 查看文本文件内容
       tags:
       - 文件管理
   /compose/delete:

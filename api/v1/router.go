@@ -37,6 +37,10 @@ func RegisterRoutes(r *gin.Engine) {
 		v1.POST("/files/delete", controllers.DeleteFile)
 		v1.POST("/files/mkdir", controllers.Mkdir)
 		v1.GET("/files/download", controllers.DownloadFile)
+		v1.POST("/files/rename", controllers.RenameFile)
+		v1.POST("/files/batch-delete", controllers.BatchDelete)
+		v1.GET("/files/view", controllers.ViewFile)
+		v1.POST("/files/save", controllers.SaveFile)
 
 		for _, route := range r.Routes() {
 			fmt.Printf("%s -> %s\n", route.Method, route.Path)

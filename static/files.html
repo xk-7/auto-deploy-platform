@@ -127,6 +127,7 @@
     <div class="action-panel">
         <button class="btn btn-success btn-sm" onclick="openUpload()"><i class="fas fa-upload me-1"></i> 上传</button>
         <button class="btn btn-secondary btn-sm" onclick="openMkdir()"><i class="fas fa-folder-plus me-1"></i> 新建文件夹</button>
+        <button class="btn btn-danger btn-sm" onclick="batchDelete()"><i class="fas fa-trash me-1"></i> 批量删除</button>
 
         <div class="search-group">
             <i class="fas fa-search"></i>
@@ -180,12 +181,43 @@
     </div>
 </div>
 
+<!-- 重命名 Modal -->
+<div class="modal fade" id="renameModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">重命名</h5></div>
+            <div class="modal-body">
+                <input type="text" id="rename-new-name" class="form-control mb-3" placeholder="新名称">
+                <button class="btn btn-primary w-100" onclick="doRename()">确定</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 文件预览 Modal -->
+<div class="modal fade" id="viewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">文件内容预览</h5></div>
+            <div class="modal-body">
+                <textarea id="view-content" class="form-control" rows="15"></textarea>
+                <button class="btn btn-success mt-3 w-100" onclick="saveFile()">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
     let CONFIG = {};
     let currentPath = "";
+    let renameTarget = ""; // 当前要重命名的文件名
+    let viewFilePath = ""; // 当前预览文件完整路径
+    let selectedFiles = new Set(); // 批量删除选中的文件
+
 
     async function loadConfig() {
         let res = await fetch('/api/v1/files/config');
@@ -217,17 +249,26 @@
 
         data.files.forEach(file => {
             let icon = file.is_dir ? `<i class="fas fa-folder file-icon text-warning"></i>` : `<i class="fas fa-file file-icon text-secondary"></i>`;
-            let action = file.is_dir ?
-                `<button class="btn btn-outline-primary btn-sm me-1" onclick="enterDir('${file.name}')">打开</button>` :
-                `<button class="btn btn-success btn-sm me-1" onclick="downloadFile('${file.name}')">下载</button>`;
-            action += `<button class="btn btn-danger btn-sm" onclick="deleteFile('${file.name}')">删除</button>`;
+            let checkbox = `<input type="checkbox" class="form-check-input me-1" onchange="toggleSelect('${file.name}', this.checked)">`;
+
+            let action = file.is_dir
+                ? `<button class="btn btn-outline-primary btn-sm me-1" onclick="enterDir('${file.name}')">打开</button>`
+                : `<button class="btn btn-success btn-sm me-1" onclick="downloadFile('${file.name}')">下载</button>`;
+
+            action += `<button class="btn btn-secondary btn-sm me-1" onclick="openRename('${file.name}')">重命名</button>`;
+            action += `<button class="btn btn-danger btn-sm me-1" onclick="deleteFile('${file.name}')">删除</button>`;
+
+            if (!file.is_dir) {
+                action += `<button class="btn btn-info btn-sm me-1" onclick="viewFile('${file.name}')">预览</button>`;
+            }
+
             table.innerHTML += `<tr>
-                <td>${icon} ${file.name}</td>
-                <td>${file.mode}</td>
-                <td>${file.is_dir ? "-" : formatSize(file.size)}</td>
-                <td>${file.mod_time}</td>
-                <td>${action}</td>
-            </tr>`;
+        <td>${checkbox}${icon} ${file.name}</td>
+        <td>${file.mode}</td>
+        <td>${file.is_dir ? "-" : formatSize(file.size)}</td>
+        <td>${file.mod_time}</td>
+        <td>${action}</td>
+    </tr>`;
         });
     }
 
@@ -326,6 +367,90 @@
             });
         }
     }
+   //重命名相关函数
+    function openRename(name) {
+        renameTarget = name;
+        document.getElementById("rename-new-name").value = "";
+        new bootstrap.Modal(document.getElementById('renameModal')).show();
+    }
+
+    async function doRename() {
+        let newName = document.getElementById("rename-new-name").value.trim();
+        if (!newName) return alert("新名称不能为空");
+        let res = await fetch(`${CONFIG.apiBaseUrl}/files/rename`, {
+            method: "POST",
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({path: currentPath, old_name: renameTarget, new_name: newName})
+        });
+        let data = await res.json();
+        if (res.status !== 200) {
+            alert(data.message || "重命名失败");
+            return;
+        }
+        bootstrap.Modal.getInstance(document.getElementById('renameModal')).hide();
+        loadFiles(currentPath);
+    }
+    //批量删除逻辑
+    function toggleSelect(name, checked) {
+        if (checked) selectedFiles.add(name);
+        else selectedFiles.delete(name);
+    }
+
+    async function batchDelete() {
+        if (selectedFiles.size === 0) {
+            alert("请先选择文件或目录");
+            return;
+        }
+        if (!confirm(`确认批量删除 ${selectedFiles.size} 个文件/目录？`)) return;
+        let names = Array.from(selectedFiles);
+        let res = await fetch(`${CONFIG.apiBaseUrl}/files/batch-delete`, {
+            method: "POST",
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({path: currentPath, names})
+        });
+        let data = await res.json();
+        if (res.status !== 200) {
+            alert(data.message || "批量删除失败");
+            return;
+        }
+        selectedFiles.clear();
+        loadFiles(currentPath);
+    }
+    //文件预览&&编辑保存
+    async function viewFile(name) {
+        viewFilePath = currentPath.endsWith("/") ? currentPath + name : currentPath + "/" + name;
+        let res = await fetch(`${CONFIG.apiBaseUrl}/files/view?path=${encodeURIComponent(viewFilePath)}`);
+        let data = await res.json();
+        if (res.status !== 200) {
+            alert(data.message || "读取失败");
+            return;
+        }
+        document.getElementById("view-content").value = data.content;
+        new bootstrap.Modal(document.getElementById('viewModal')).show();
+    }
+
+    async function saveFile() {
+        let content = document.getElementById("view-content").value;
+        let res = await fetch(`${CONFIG.apiBaseUrl}/files/save`, {
+            method: "POST",
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({path: viewFilePath, content})
+        });
+        let data = await res.json();
+        if (res.status !== 200) {
+            alert(data.message || "保存失败");
+            return;
+        }
+        Swal.fire({
+            icon: 'success',
+            title: '保存成功',
+            showConfirmButton: false,
+            timer: 1500
+        });
+        bootstrap.Modal.getInstance(document.getElementById('viewModal')).hide();
+    }
+
+
 
     function highlightNav() {
         let navLinks = document.querySelectorAll('.nav-link-custom');

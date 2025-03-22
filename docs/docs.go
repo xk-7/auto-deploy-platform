@@ -65,6 +65,57 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/files/batch-delete": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "文件管理"
+                ],
+                "summary": "批量删除文件或文件夹",
+                "parameters": [
+                    {
+                        "description": "批量删除参数",
+                        "name": "delete",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.BatchDeleteRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "删除成功",
+                        "schema": {
+                            "$ref": "#/definitions/models.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "越权",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "失败",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/files/config": {
             "get": {
                 "description": "返回默认基础目录和是否允许任意目录",
@@ -80,6 +131,154 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/models.FileConfigResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/files/rename": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "文件管理"
+                ],
+                "summary": "重命名文件或文件夹",
+                "parameters": [
+                    {
+                        "description": "重命名参数",
+                        "name": "rename",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.RenameRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "重命名成功",
+                        "schema": {
+                            "$ref": "#/definitions/models.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "越权",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "失败",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/files/save": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "文件管理"
+                ],
+                "summary": "保存文件内容",
+                "parameters": [
+                    {
+                        "description": "保存内容参数",
+                        "name": "save",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.SaveFileRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "保存成功",
+                        "schema": {
+                            "$ref": "#/definitions/models.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "越权",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "保存失败",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/files/view": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "文件管理"
+                ],
+                "summary": "查看文本文件内容",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "文件完整路径",
+                        "name": "path",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "文件内容",
+                        "schema": {
+                            "$ref": "#/definitions/models.FileContentResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "越权",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "读取失败",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
                         }
                     }
                 }
@@ -694,6 +893,25 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "models.BatchDeleteRequest": {
+            "type": "object",
+            "properties": {
+                "names": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "[\"file1.txt\"",
+                        " \"folder2\"]"
+                    ]
+                },
+                "path": {
+                    "type": "string",
+                    "example": "/data"
+                }
+            }
+        },
         "models.ComposeActionRequest": {
             "type": "object",
             "properties": {
@@ -868,6 +1086,14 @@ const docTemplate = `{
                 }
             }
         },
+        "models.FileContentResponse": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string"
+                }
+            }
+        },
         "models.FileDeleteRequest": {
             "type": "object",
             "properties": {
@@ -949,6 +1175,23 @@ const docTemplate = `{
                 }
             }
         },
+        "models.RenameRequest": {
+            "type": "object",
+            "properties": {
+                "new_name": {
+                    "type": "string",
+                    "example": "file-renamed.txt"
+                },
+                "old_name": {
+                    "type": "string",
+                    "example": "file.txt"
+                },
+                "path": {
+                    "type": "string",
+                    "example": "/data"
+                }
+            }
+        },
         "models.RunAnsibleRequest": {
             "type": "object",
             "properties": {
@@ -959,6 +1202,19 @@ const docTemplate = `{
                 "playbook": {
                     "type": "string",
                     "example": "site.yml"
+                }
+            }
+        },
+        "models.SaveFileRequest": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string",
+                    "example": "新的文件内容"
+                },
+                "path": {
+                    "type": "string",
+                    "example": "/data/file.txt"
                 }
             }
         },

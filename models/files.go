@@ -33,3 +33,27 @@ type FileConfigResponse struct {
 	AllowAll   bool   `json:"allowAll"`
 	ApiBaseUrl string `json:"apiBaseUrl"`
 }
+
+// RenameRequest 文件重命名请求
+type RenameRequest struct {
+	Path    string `json:"path" example:"/data"`
+	OldName string `json:"old_name" example:"file.txt"`
+	NewName string `json:"new_name" example:"file-renamed.txt"`
+}
+
+// BatchDeleteRequest 批量删除请求
+type BatchDeleteRequest struct {
+	Path  string   `json:"path" example:"/data"`
+	Names []string `json:"names" example:"[\"file1.txt\", \"folder2\"]"`
+}
+
+// FileContentResponse 文件内容返回
+type FileContentResponse struct {
+	Content string `json:"content"`
+}
+
+// SaveFileRequest 保存文件内容请求
+type SaveFileRequest struct {
+	Path    string `json:"path" example:"/data/file.txt"`
+	Content string `json:"content" example:"新的文件内容"`
+}

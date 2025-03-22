@@ -241,3 +241,124 @@ func DownloadFile(c *gin.Context) {
 	}
 	c.FileAttachment(path, filepath.Base(path))
 }
+
+// RenameFile 文件/目录重命名
+// @Summary 重命名文件或文件夹
+// @Tags 文件管理
+// @Accept json
+// @Produce json
+// @Param rename body models.RenameRequest true "重命名参数"
+// @Success 200 {object} models.SuccessResponse "重命名成功"
+// @Failure 400 {object} models.ErrorResponse "参数错误"
+// @Failure 403 {object} models.ErrorResponse "越权"
+// @Failure 500 {object} models.ErrorResponse "失败"
+// @Router /api/v1/files/rename [post]
+func RenameFile(c *gin.Context) {
+	var req models.RenameRequest
+	if err := c.ShouldBindJSON(&req); err != nil || req.OldName == "" || req.NewName == "" {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Code: 400, Message: "参数错误"})
+		return
+	}
+	oldPath := filepath.Join(req.Path, req.OldName)
+	newPath := filepath.Join(req.Path, req.NewName)
+	if !allowAll && !filepath.HasPrefix(oldPath, baseDir) {
+		c.JSON(http.StatusForbidden, models.ErrorResponse{Code: 403, Message: "越权"})
+		return
+	}
+	err := os.Rename(oldPath, newPath)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Code: 500, Message: "重命名失败"})
+		return
+	}
+	c.JSON(http.StatusOK, models.SuccessResponse{Code: 200, Message: "重命名成功"})
+}
+
+// BatchDelete 批量删除
+// @Summary 批量删除文件或文件夹
+// @Tags 文件管理
+// @Accept json
+// @Produce json
+// @Param delete body models.BatchDeleteRequest true "批量删除参数"
+// @Success 200 {object} models.SuccessResponse "删除成功"
+// @Failure 400 {object} models.ErrorResponse "参数错误"
+// @Failure 403 {object} models.ErrorResponse "越权"
+// @Failure 500 {object} models.ErrorResponse "失败"
+// @Router /api/v1/files/batch-delete [post]
+func BatchDelete(c *gin.Context) {
+	var req models.BatchDeleteRequest
+	if err := c.ShouldBindJSON(&req); err != nil || len(req.Names) == 0 {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Code: 400, Message: "参数错误"})
+		return
+	}
+	for _, name := range req.Names {
+		fullPath := filepath.Join(req.Path, name)
+		if !allowAll && !filepath.HasPrefix(fullPath, baseDir) {
+			c.JSON(http.StatusForbidden, models.ErrorResponse{Code: 403, Message: "越权"})
+			return
+		}
+		os.RemoveAll(fullPath)
+	}
+	c.JSON(http.StatusOK, models.SuccessResponse{Code: 200, Message: "批量删除成功"})
+}
+
+// ViewFile 查看文件内容
+// @Summary 查看文本文件内容
+// @Tags 文件管理
+// @Produce json
+// @Param path query string true "文件完整路径"
+// @Success 200 {object} models.FileContentResponse "文件内容"
+// @Failure 400 {object} models.ErrorResponse "参数错误"
+// @Failure 403 {object} models.ErrorResponse "越权"
+// @Failure 500 {object} models.ErrorResponse "读取失败"
+// @Router /api/v1/files/view [get]
+func ViewFile(c *gin.Context) {
+	path := c.Query("path")
+	if path == "" {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Code: 400, Message: "参数错误"})
+		return
+	}
+	if !allowAll && !filepath.HasPrefix(path, baseDir) {
+		c.JSON(http.StatusForbidden, models.ErrorResponse{Code: 403, Message: "越权"})
+		return
+	}
+	content, err := os.ReadFile(path)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Code: 500, Message: "读取失败"})
+		return
+	}
+	c.JSON(http.StatusOK, models.FileContentResponse{Content: string(content)})
+}
+
+type SaveFileRequest struct {
+	Path    string `json:"path"`
+	Content string `json:"content"`
+}
+
+// SaveFile 保存文件内容
+// @Summary 保存文件内容
+// @Tags 文件管理
+// @Accept json
+// @Produce json
+// @Param save body models.SaveFileRequest true "保存内容参数"
+// @Success 200 {object} models.SuccessResponse "保存成功"
+// @Failure 400 {object} models.ErrorResponse "参数错误"
+// @Failure 403 {object} models.ErrorResponse "越权"
+// @Failure 500 {object} models.ErrorResponse "保存失败"
+// @Router /api/v1/files/save [post]
+func SaveFile(c *gin.Context) {
+	var req models.SaveFileRequest
+	if err := c.ShouldBindJSON(&req); err != nil || req.Path == "" {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Code: 400, Message: "参数错误"})
+		return
+	}
+	if !allowAll && !filepath.HasPrefix(req.Path, baseDir) {
+		c.JSON(http.StatusForbidden, models.ErrorResponse{Code: 403, Message: "越权"})
+		return
+	}
+	err := os.WriteFile(req.Path, []byte(req.Content), 0644)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Code: 500, Message: "保存失败"})
+		return
+	}
+	c.JSON(http.StatusOK, models.SuccessResponse{Code: 200, Message: "保存成功"})
+}
