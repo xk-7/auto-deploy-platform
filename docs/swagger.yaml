@@ -13,6 +13,15 @@ definitions:
         example: /data
         type: string
     type: object
+  models.ChmodRequest:
+    properties:
+      mode:
+        example: "755"
+        type: string
+      path:
+        example: /data/file.txt
+        type: string
+    type: object
   models.ComposeActionRequest:
     properties:
       name:
@@ -45,6 +54,23 @@ definitions:
             $ref: '#/definitions/models.ComposeContainerInfo'
           type: array
         type: object
+    type: object
+  models.CompressRequest:
+    properties:
+      names:
+        example:
+        - '["file1.txt"'
+        - ' "folder"]'
+        items:
+          type: string
+        type: array
+      path:
+        example: /data
+        type: string
+      type:
+        description: 可选 zip/tar.gz
+        example: zip
+        type: string
     type: object
   models.ContainerInfo:
     properties:
@@ -309,6 +335,72 @@ paths:
       summary: 批量删除文件或文件夹
       tags:
       - 文件管理
+  /api/v1/files/chmod:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 权限参数
+        in: body
+        name: chmod
+        required: true
+        schema:
+          $ref: '#/definitions/models.ChmodRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 修改成功
+          schema:
+            $ref: '#/definitions/models.SuccessResponse'
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: 越权
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: 失败
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: 修改文件/目录权限
+      tags:
+      - 文件管理
+  /api/v1/files/compress:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 压缩参数
+        in: body
+        name: compress
+        required: true
+        schema:
+          $ref: '#/definitions/models.CompressRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 压缩成功
+          schema:
+            $ref: '#/definitions/models.SuccessResponse'
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: 越权
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: 压缩失败
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: 压缩文件或目录
+      tags:
+      - 文件管理
   /api/v1/files/config:
     get:
       description: 返回默认基础目录和是否允许任意目录
@@ -320,6 +412,39 @@ paths:
           schema:
             $ref: '#/definitions/models.FileConfigResponse'
       summary: 获取文件管理配置
+      tags:
+      - 文件管理
+  /api/v1/files/extract:
+    post:
+      consumes:
+      - multipart/form-data
+      parameters:
+      - description: 解压到目录
+        in: formData
+        name: path
+        required: true
+        type: string
+      - description: 上传的 zip 文件
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 解压成功
+          schema:
+            $ref: '#/definitions/models.SuccessResponse'
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: 解压失败
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: 解压 zip 文件
       tags:
       - 文件管理
   /api/v1/files/rename:

@@ -116,6 +116,108 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/files/chmod": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "文件管理"
+                ],
+                "summary": "修改文件/目录权限",
+                "parameters": [
+                    {
+                        "description": "权限参数",
+                        "name": "chmod",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.ChmodRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "修改成功",
+                        "schema": {
+                            "$ref": "#/definitions/models.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "越权",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "失败",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/files/compress": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "文件管理"
+                ],
+                "summary": "压缩文件或目录",
+                "parameters": [
+                    {
+                        "description": "压缩参数",
+                        "name": "compress",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CompressRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "压缩成功",
+                        "schema": {
+                            "$ref": "#/definitions/models.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "越权",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "压缩失败",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/files/config": {
             "get": {
                 "description": "返回默认基础目录和是否允许任意目录",
@@ -131,6 +233,56 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/models.FileConfigResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/files/extract": {
+            "post": {
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "文件管理"
+                ],
+                "summary": "解压 zip 文件",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "解压到目录",
+                        "name": "path",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "上传的 zip 文件",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "解压成功",
+                        "schema": {
+                            "$ref": "#/definitions/models.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "解压失败",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
                         }
                     }
                 }
@@ -912,6 +1064,19 @@ const docTemplate = `{
                 }
             }
         },
+        "models.ChmodRequest": {
+            "type": "object",
+            "properties": {
+                "mode": {
+                    "type": "string",
+                    "example": "755"
+                },
+                "path": {
+                    "type": "string",
+                    "example": "/data/file.txt"
+                }
+            }
+        },
         "models.ComposeActionRequest": {
             "type": "object",
             "properties": {
@@ -957,6 +1122,30 @@ const docTemplate = `{
                             "$ref": "#/definitions/models.ComposeContainerInfo"
                         }
                     }
+                }
+            }
+        },
+        "models.CompressRequest": {
+            "type": "object",
+            "properties": {
+                "names": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "[\"file1.txt\"",
+                        " \"folder\"]"
+                    ]
+                },
+                "path": {
+                    "type": "string",
+                    "example": "/data"
+                },
+                "type": {
+                    "description": "可选 zip/tar.gz",
+                    "type": "string",
+                    "example": "zip"
                 }
             }
         },

@@ -2,7 +2,6 @@ package v1
 
 import (
 	"auto-deploy-platform/controllers"
-	"fmt"
 	"github.com/gin-gonic/gin"
 )
 
@@ -41,10 +40,13 @@ func RegisterRoutes(r *gin.Engine) {
 		v1.POST("/files/batch-delete", controllers.BatchDelete)
 		v1.GET("/files/view", controllers.ViewFile)
 		v1.POST("/files/save", controllers.SaveFile)
+		v1.POST("/files/chmod", controllers.ChmodFile)
+		v1.POST("/files/compress", controllers.CompressFiles)
+		v1.POST("/files/extract", controllers.ExtractZip)
 
-		for _, route := range r.Routes() {
-			fmt.Printf("%s -> %s\n", route.Method, route.Path)
-		}
+		//for _, route := range r.Routes() {
+		//	fmt.Printf("%s -> %s\n", route.Method, route.Path)
+		//}
 
 	}
 }

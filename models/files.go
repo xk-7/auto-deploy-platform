@@ -57,3 +57,18 @@ type SaveFileRequest struct {
 	Path    string `json:"path" example:"/data/file.txt"`
 	Content string `json:"content" example:"新的文件内容"`
 }
+
+type ChmodRequest struct {
+	Path string `json:"path" example:"/data/file.txt"`
+	Mode string `json:"mode" example:"755"`
+}
+
+type CompressRequest struct {
+	Path  string   `json:"path" example:"/data"`
+	Names []string `json:"names" example:"[\"file1.txt\", \"folder\"]"`
+	Type  string   `json:"type" example:"zip"` // 可选 zip/tar.gz
+}
+
+type ExtractRequest struct {
+	Path string `json:"path" example:"/data"`
+}

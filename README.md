@@ -58,10 +58,21 @@
 - POST `/api/v1/run-ansible` → 指定 Inventory + Playbook 文件，运行并推送日志
 
 ------
+### 5️⃣ 文件管理 🆕
 
-### 5️⃣ 多主机切换
+- GET `/api/v1/files/list` → 获取文件列表
+- POST `/api/v1/files/upload` → 上传文件
+- POST `/api/v1/files/delete` → 删除文件/目录
+- POST `/api/v1/files/batch-delete` → **批量删除** 文件/目录
+- POST `/api/v1/files/mkdir` → 创建目录
+- POST `/api/v1/files/rename` → **重命名** 文件/目录
+- GET `/api/v1/files/view` → **预览文件内容**
+- POST `/api/v1/files/save` → **编辑保存文件内容**
+- GET `/api/v1/files/download` → 下载文件
+---
+### 6️⃣ 多主机切换
 
-支持配置多个 Docker 主机，通过下拉选择切换。
+支持配置多个 Docker 主机，通过前端切换管理。
 
 ------
 
@@ -131,15 +142,12 @@ http://localhost:8081
 
 ------
 
-## 💡 下一步
+## 💡 下一步计划
 
-**文件管理模块** 计划设计：
-
-- 页面展示：
-  - 文件树 + 权限标识
-  - 可上传 / 删除 / 下载
-- 接口设计：
-  - GET `/api/v1/files/list`
-  - POST `/api/v1/files/upload`
-  - DELETE `/api/v1/files/:path`
-  - GET `/api/v1/files/download/:path`
+| 功能模块           | 描述                                     |
+| -------------------- | ------------------------------------------ |
+| 🔒 用户权限 & 登录 | 多用户、角色权限系统                     |
+| 📊 任务历史        | 查看历史发布任务记录及状态               |
+| 💾 自动备份 & 回滚 | 容器和 Compose 的数据卷快照备份/一键回滚 |
+| 💬 消息通知        | 发布成功/失败可邮件/钉钉/微信通知        |
+| 🌍 多云环境适配    | Azure、AWS、Aliyun 扩展                  |

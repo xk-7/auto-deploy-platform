@@ -128,6 +128,8 @@
         <button class="btn btn-success btn-sm" onclick="openUpload()"><i class="fas fa-upload me-1"></i> 上传</button>
         <button class="btn btn-secondary btn-sm" onclick="openMkdir()"><i class="fas fa-folder-plus me-1"></i> 新建文件夹</button>
         <button class="btn btn-danger btn-sm" onclick="batchDelete()"><i class="fas fa-trash me-1"></i> 批量删除</button>
+        <button class="btn btn-warning btn-sm" onclick="openCompress()"><i class="fas fa-file-archive me-1"></i> 批量压缩</button>
+        <button class="btn btn-info btn-sm" onclick="openExtract()"><i class="fas fa-file-zipper me-1"></i> 解压上传</button>
 
         <div class="search-group">
             <i class="fas fa-search"></i>
@@ -207,11 +209,54 @@
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<!-- 权限修改 Modal -->
+<div class="modal fade" id="chmodModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">修改权限</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="chmod-mode" class="form-control mb-3" placeholder="例如 755">
+                <button class="btn btn-primary w-100" onclick="doChmod()">确定</button>
+            </div>
+        </div>
+    </div>
+</div>
 
-<script>
+
+    <!-- 压缩 Modal -->
+    <div class="modal fade" id="compressModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">压缩文件</h5></div>
+                <div class="modal-body">
+                    <input type="text" id="compress-name" class="form-control mb-3" placeholder="压缩包名 (例如 archive.zip)">
+                    <button class="btn btn-primary w-100" onclick="doCompress()">开始压缩</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 解压 Modal -->
+    <div class="modal fade" id="extractModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">解压文件</h5></div>
+                <div class="modal-body">
+                    <input type="file" id="extract-file" class="form-control mb-3">
+                    <button class="btn btn-success w-100" onclick="doExtract()">开始解压</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
     let CONFIG = {};
     let currentPath = "";
     let renameTarget = ""; // 当前要重命名的文件名
@@ -257,6 +302,7 @@
 
             action += `<button class="btn btn-secondary btn-sm me-1" onclick="openRename('${file.name}')">重命名</button>`;
             action += `<button class="btn btn-danger btn-sm me-1" onclick="deleteFile('${file.name}')">删除</button>`;
+            action += `<button class="btn btn-secondary btn-sm me-1" onclick="openChmod('${file.name}')">权限</button>`;
 
             if (!file.is_dir) {
                 action += `<button class="btn btn-info btn-sm me-1" onclick="viewFile('${file.name}')">预览</button>`;
@@ -449,6 +495,105 @@
         });
         bootstrap.Modal.getInstance(document.getElementById('viewModal')).hide();
     }
+    //权限修改
+    let chmodTarget = "";
+
+    function openChmod(name) {
+        chmodTarget = name;
+        document.getElementById("chmod-mode").value = "";
+        new bootstrap.Modal(document.getElementById('chmodModal')).show();
+    }
+
+    async function doChmod() {
+        let mode = document.getElementById("chmod-mode").value.trim();
+        if (!mode) return Swal.fire("权限不能为空", '', 'warning');
+
+        let res = await fetch(`${CONFIG.apiBaseUrl}/files/chmod`, {
+            method: "POST",
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({path: currentPath + "/" + chmodTarget, mode})
+        });
+        if (res.status === 200) {
+            Swal.fire("修改成功", '', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('chmodModal')).hide();
+            loadFiles(currentPath);
+        } else {
+            let data = await res.json();
+            Swal.fire("修改失败", data.message, 'error');
+        }
+    }
+
+    //批量压缩
+    function openCompress() {
+        if (selectedFiles.size === 0) {
+            Swal.fire("请选择文件", '', 'warning');
+            return;
+        }
+        document.getElementById("compress-name").value = "archive.zip";
+        new bootstrap.Modal(document.getElementById('compressModal')).show();
+    }
+
+    async function doCompress() {
+        let archiveName = document.getElementById("compress-name").value.trim();
+        if (!archiveName.endsWith(".zip")) return Swal.fire("文件名需以 .zip 结尾", '', 'warning');
+
+        let names = Array.from(selectedFiles);
+
+        // 🔥 增加 loading 提示
+        Swal.fire({
+            title: '正在压缩，请稍候...',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        let res = await fetch(`${CONFIG.apiBaseUrl}/files/compress`, {
+            method: "POST",
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({path: currentPath, names, type: "zip"})
+        });
+
+        Swal.close(); // 关闭加载
+
+        if (res.status === 200) {
+            Swal.fire("压缩成功", '', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('compressModal')).hide();
+            loadFiles(currentPath);
+        } else {
+            let data = await res.json();
+            Swal.fire("压缩失败", data.message, 'error');
+        }
+    }
+
+    //解压zip
+    function openExtract() {
+        let modal = new bootstrap.Modal(document.getElementById('extractModal'));
+        modal.show();
+    }
+
+    async function doExtract() {
+        let fileInput = document.getElementById("extract-file");
+        let file = fileInput.files[0];
+        if (!file) return Swal.fire("请选择 zip 文件", '', 'warning');
+        let formData = new FormData();
+        formData.append("file", file);
+        formData.append("path", currentPath);
+
+        let res = await fetch(`${CONFIG.apiBaseUrl}/files/extract`, {
+            method: "POST",
+            body: formData
+        });
+        if (res.status === 200) {
+            Swal.fire("解压成功", '', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('extractModal')).hide();
+            loadFiles(currentPath);
+        } else {
+            let data = await res.json();
+            Swal.fire("解压失败", data.message, 'error');
+        }
+    }
+
 
 
 

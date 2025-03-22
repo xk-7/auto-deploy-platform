@@ -1,11 +1,14 @@
 package controllers
 
 import (
+	"archive/zip"
 	"auto-deploy-platform/models"
 	"github.com/gin-gonic/gin"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 )
 
 var (
@@ -361,4 +364,188 @@ func SaveFile(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, models.SuccessResponse{Code: 200, Message: "保存成功"})
+}
+
+// ChmodFile 修改文件权限
+// @Summary 修改文件/目录权限
+// @Tags 文件管理
+// @Accept json
+// @Produce json
+// @Param chmod body models.ChmodRequest true "权限参数"
+// @Success 200 {object} models.SuccessResponse "修改成功"
+// @Failure 400 {object} models.ErrorResponse "参数错误"
+// @Failure 403 {object} models.ErrorResponse "越权"
+// @Failure 500 {object} models.ErrorResponse "失败"
+// @Router /api/v1/files/chmod [post]
+func ChmodFile(c *gin.Context) {
+	var req models.ChmodRequest
+	if err := c.ShouldBindJSON(&req); err != nil || req.Path == "" || req.Mode == "" {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Code: 400, Message: "参数错误"})
+		return
+	}
+	if !allowAll && !filepath.HasPrefix(req.Path, baseDir) {
+		c.JSON(http.StatusForbidden, models.ErrorResponse{Code: 403, Message: "越权"})
+		return
+	}
+	perm, err := strconv.ParseUint(req.Mode, 8, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Code: 400, Message: "权限格式错误"})
+		return
+	}
+	if err := os.Chmod(req.Path, os.FileMode(perm)); err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Code: 500, Message: "修改失败"})
+		return
+	}
+	c.JSON(http.StatusOK, models.SuccessResponse{Code: 200, Message: "权限修改成功"})
+}
+
+// CompressFiles 压缩文件/目录为 ZIP
+// @Summary 压缩文件或目录
+// @Tags 文件管理
+// @Accept json
+// @Produce json
+// @Param compress body models.CompressRequest true "压缩参数"
+// @Success 200 {object} models.SuccessResponse "压缩成功"
+// @Failure 400 {object} models.ErrorResponse "参数错误"
+// @Failure 403 {object} models.ErrorResponse "越权"
+// @Failure 500 {object} models.ErrorResponse "压缩失败"
+// @Router /api/v1/files/compress [post]
+func CompressFiles(c *gin.Context) {
+	var req models.CompressRequest
+	if err := c.ShouldBindJSON(&req); err != nil || req.Path == "" || len(req.Names) == 0 {
+		c.JSON(400, models.ErrorResponse{Code: 400, Message: "参数错误"})
+		return
+	}
+	if !allowAll && !filepath.HasPrefix(req.Path, baseDir) {
+		c.JSON(403, models.ErrorResponse{Code: 403, Message: "越权"})
+		return
+	}
+
+	// 确保压缩类型
+	if req.Type != "zip" {
+		c.JSON(400, models.ErrorResponse{Code: 400, Message: "目前仅支持 zip"})
+		return
+	}
+
+	output := filepath.Join(req.Path, "archive.zip")
+	outFile, err := os.Create(output)
+	if err != nil {
+		c.JSON(500, models.ErrorResponse{Code: 500, Message: "创建压缩文件失败"})
+		return
+	}
+	defer outFile.Close()
+
+	zipWriter := zip.NewWriter(outFile)
+	defer zipWriter.Close()
+
+	for _, name := range req.Names {
+		fullPath := filepath.Join(req.Path, name)
+		err := addFileToZip(zipWriter, fullPath, name)
+		if err != nil {
+			c.JSON(500, models.ErrorResponse{Code: 500, Message: "添加文件失败: " + err.Error()})
+			return
+		}
+	}
+
+	c.JSON(200, models.SuccessResponse{Code: 200, Message: "压缩成功"})
+}
+
+// 递归添加文件/目录到 zip
+func addFileToZip(zipWriter *zip.Writer, path, baseName string) error {
+	info, err := os.Lstat(path)
+	if err != nil {
+		return err
+	}
+
+	// 忽略符号链接，防止死循环
+	if info.Mode()&os.ModeSymlink != 0 {
+		return nil
+	}
+
+	if info.IsDir() {
+		// 添加目录
+		_, err := zipWriter.Create(baseName + "/")
+		if err != nil {
+			return err
+		}
+		entries, err := os.ReadDir(path)
+		if err != nil {
+			return err
+		}
+		for _, e := range entries {
+			err = addFileToZip(zipWriter, filepath.Join(path, e.Name()), filepath.Join(baseName, e.Name()))
+			if err != nil {
+				return err
+			}
+		}
+	} else {
+		// 添加文件
+		file, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+
+		writer, err := zipWriter.Create(baseName)
+		if err != nil {
+			return err
+		}
+		_, err = io.Copy(writer, file)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ExtractZip 解压
+// @Summary 解压 zip 文件
+// @Tags 文件管理
+// @Accept multipart/form-data
+// @Produce json
+// @Param path formData string true "解压到目录"
+// @Param file formData file true "上传的 zip 文件"
+// @Success 200 {object} models.SuccessResponse "解压成功"
+// @Failure 400 {object} models.ErrorResponse "参数错误"
+// @Failure 500 {object} models.ErrorResponse "解压失败"
+// @Router /api/v1/files/extract [post]
+func ExtractZip(c *gin.Context) {
+	path := c.PostForm("path")
+	file, err := c.FormFile("file")
+	if err != nil || path == "" {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Code: 400, Message: "参数错误"})
+		return
+	}
+	savePath := filepath.Join(path, file.Filename)
+	c.SaveUploadedFile(file, savePath)
+
+	// 解压
+	r, err := zip.OpenReader(savePath)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Code: 500, Message: "打开压缩包失败"})
+		return
+	}
+	defer r.Close()
+
+	for _, f := range r.File {
+		fpath := filepath.Join(path, f.Name)
+		if f.FileInfo().IsDir() {
+			os.MkdirAll(fpath, 0755)
+		} else {
+			os.MkdirAll(filepath.Dir(fpath), 0755)
+			outFile, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+			if err != nil {
+				continue
+			}
+			rc, err := f.Open()
+			if err != nil {
+				continue
+			}
+			io.Copy(outFile, rc)
+			outFile.Close()
+			rc.Close()
+		}
+	}
+
+	c.JSON(http.StatusOK, models.SuccessResponse{Code: 200, Message: "解压成功"})
 }
