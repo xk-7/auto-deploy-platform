@@ -3,17 +3,26 @@ package main
 import (
 	"auto-deploy-platform/api/v1"
 	"auto-deploy-platform/config"
+	_ "auto-deploy-platform/docs"
 	"auto-deploy-platform/middlewares"
 	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/swaggo/files"
+	"github.com/swaggo/gin-swagger"
 )
 
+// @title 文件管理 API 文档
+// @version 1.0
+// @description 文件上传、下载、管理
+// @BasePath /
 func main() {
 	config.InitConfig()
 
 	r := gin.Default()
+
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// Middlewares
 	r.Use(middlewares.CORSMiddleware())
@@ -30,6 +39,7 @@ func main() {
 	r.GET("/", func(c *gin.Context) {
 		c.Redirect(http.StatusMovedPermanently, "/static/index.html")
 	})
+
 	// Routes
 	v1.RegisterRoutes(r)
 
