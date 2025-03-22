@@ -1,5 +1,5 @@
 {
-  "apiBaseUrl": "http://13.212.57.194:8081/api/v1",
-  "wsBaseUrl": "ws://13.212.57.194:8081/api/v1",
+  "apiBaseUrl": "http://13.215.175.73:8081/api/v1",
+  "wsBaseUrl": "ws://13.215.175.73:8081/api/v1",
   "allowAll": true
 }

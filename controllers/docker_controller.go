@@ -2,9 +2,12 @@ package controllers
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/go-connections/nat"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -16,6 +19,16 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 )
+
+// 辅助函数 → Base64 Encode
+func encodeAuthToBase64(authConfig types.AuthConfig) string {
+	encodedJSON, err := json.Marshal(authConfig)
+	if err != nil {
+		log.Printf("Error encoding auth: %v", err)
+		return ""
+	}
+	return base64.URLEncoding.EncodeToString(encodedJSON)
+}
 
 // ------------------- 容器列表 -------------------
 func ListContainers(c *gin.Context) {
@@ -94,27 +107,44 @@ func CreateContainer(c *gin.Context) {
 		Network string `json:"network"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil || req.Image == "" {
+		log.Printf("❌ Invalid request body: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
 	}
 
 	cli, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
+		log.Printf("❌ Docker client init failed: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Docker client init failed"})
 		return
 	}
 
 	ctx := context.Background()
 
-	// 拉取镜像（如果不存在）
+	// 标准化 image 名
+	if !strings.Contains(req.Image, ":") {
+		req.Image = req.Image + ":latest"
+	}
+
+	// 先 inspect
 	_, _, err = cli.ImageInspectWithRaw(ctx, req.Image)
 	if err != nil {
-		out, pullErr := cli.ImagePull(ctx, req.Image, types.ImagePullOptions{})
+		log.Printf("镜像不存在，本地拉取: %s", req.Image)
+
+		out, pullErr := cli.ImagePull(ctx, req.Image, types.ImagePullOptions{
+			RegistryAuth: encodeAuthToBase64(types.AuthConfig{}),
+		})
 		if pullErr != nil {
+			log.Printf("❌ Image pull failed: %v", pullErr)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Pull image failed", "detail": pullErr.Error()})
 			return
 		}
+
 		defer out.Close()
+
+		// 读取拉取流，确保拉取完成
+		io.Copy(io.Discard, out)
+		log.Println("镜像拉取完成！")
 	}
 
 	// 端口映射
@@ -173,6 +203,7 @@ func CreateContainer(c *gin.Context) {
 		ExposedPorts: exposedPorts,
 	}, hostConfig, &network.NetworkingConfig{}, nil, req.Name)
 	if err != nil {
+		log.Printf("❌ Container create failed: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Create failed", "detail": err.Error()})
 		return
 	}
