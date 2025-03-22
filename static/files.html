@@ -2,68 +2,106 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>File Manager</title>
+    <title>文件管理</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
         body {
             padding-top: 70px;
-            background-color: #f0f2f5;
+            background-color: #f8f9fc;
+            font-family: 'Segoe UI', sans-serif;
+            color: #333;
         }
-        .nav-link-custom {
-            font-weight: 500;
-            color: #555;
-            margin-left: 10px;
-            transition: all 0.3s ease;
+
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
         }
-        .nav-link-custom:hover {
-            background-color: #e9ecef;
-            border-radius: 5px;
-            color: #000;
-        }
-        .navbar-light .navbar-nav .nav-link.active {
-            background-color: #0d6efd;
-            color: #fff !important;
-            border-radius: 5px;
-        }
-        .file-icon {
-            margin-right: 8px;
-            font-size: 1.1rem;
-        }
+
         .breadcrumb {
             background-color: #fff;
-            border-radius: .5rem;
             padding: 10px 15px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.05);
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
-        .breadcrumb a { text-decoration: none; }
-        .table thead th { vertical-align: middle; }
-        .table tbody td { vertical-align: middle; }
-        .table-hover tbody tr:hover { background-color: #f9fafb; }
-        .btn-sm { min-width: 90px; }
+
+        .action-panel {
+            background-color: #fff;
+            padding: 20px 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .action-panel .btn-sm {
+            min-width: 110px;
+            padding: 8px 12px;
+        }
+
         .search-group {
-            position: relative;
-            width: 300px;
+            display: flex;
+            align-items: center;
+            border: 1px solid #ced4da;
+            border-radius: .4rem;
+            padding: 6px 10px;
+            background-color: #fff;
+            height: 40px;
         }
+
         .search-group i {
-            position: absolute;
-            top: 50%;
-            left: 10px;
-            transform: translateY(-50%);
             color: #888;
+            margin-right: 8px;
+            font-size: 14px;
         }
+
         #path-input {
-            padding-left: 30px;
+            border: none;
+            outline: none;
+            box-shadow: none;
+            height: 26px;
+            flex: 1;
+            font-size: 0.9rem;
         }
+
+        .table {
+            background-color: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .table thead th {
+            vertical-align: middle;
+            background-color: #f8f9fa;
+        }
+
+        .table tbody td {
+            vertical-align: middle;
+        }
+
+        .table-hover tbody tr:hover {
+            background-color: #f1f3f5;
+        }
+
+        .btn {
+            border-radius: 6px !important;
+        }
+
     </style>
 </head>
 <body>
 
-<!-- 导航栏 -->
+<!-- Navbar -->
 <nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm fixed-top">
     <div class="container-fluid">
         <a class="navbar-brand fw-bold" href="/">🚀 Auto Deploy</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
         <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
             <ul class="navbar-nav">
                 <li class="nav-item"><a class="nav-link nav-link-custom" href="/">📊 System Monitor</a></li>
@@ -78,24 +116,27 @@
 
 <!-- Main -->
 <div class="container mt-4">
-    <h1 class="mb-3">📂 文件管理</h1>
+    <h1 class="mb-3"><i class="fas fa-folder text-warning me-2"></i> 文件管理</h1>
 
     <!-- Breadcrumb -->
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb" id="breadcrumb"></ol>
     </nav>
 
-    <!-- Actions -->
-    <div class="mb-3 d-flex flex-wrap align-items-center">
-        <button class="btn btn-success btn-sm me-2 mb-2" onclick="openUpload()"><i class="fas fa-upload me-1"></i> 上传</button>
-        <button class="btn btn-secondary btn-sm me-2 mb-2" onclick="openMkdir()"><i class="fas fa-folder-plus me-1"></i> 新建文件夹</button>
+    <!-- Action Panel -->
+    <div class="action-panel">
+        <button class="btn btn-success btn-sm" onclick="openUpload()"><i class="fas fa-upload me-1"></i> 上传</button>
+        <button class="btn btn-secondary btn-sm" onclick="openMkdir()"><i class="fas fa-folder-plus me-1"></i> 新建文件夹</button>
 
-        <div class="search-group me-2 mb-2">
+        <div class="search-group">
             <i class="fas fa-search"></i>
-            <input type="text" id="path-input" placeholder="输入路径跳转" class="form-control form-control-sm" onkeydown="handleKey(event)">
+            <input type="text" id="path-input" placeholder="输入路径跳转"
+                   class="form-control form-control-sm"
+                   onkeydown="handleKey(event)">
         </div>
-        <button class="btn btn-outline-primary btn-sm me-2 mb-2" onclick="jumpPath()">跳转</button>
-        <button class="btn btn-outline-warning btn-sm mb-2" onclick="loadFiles('')">回到默认目录</button>
+
+        <button class="btn btn-outline-primary btn-sm" onclick="jumpPath()">跳转</button>
+        <button class="btn btn-outline-warning btn-sm" onclick="loadFiles('')">回到默认目录</button>
     </div>
 
     <!-- File Table -->
@@ -167,7 +208,7 @@
 
         if (currentPath !== CONFIG.baseDir) {
             table.innerHTML += `<tr>
-                <td><a href="javascript:void(0)" onclick="goUp()"><i class="fas fa-level-up-alt me-1"></i> 上一级</a></td>
+                <td><a href="javascript:void(0)" onclick="goUp()"><i class="fas fa-level-up-alt me-1 text-primary"></i> 上一级</a></td>
                 <td>-</td><td>-</td><td>-</td><td>-</td>
             </tr>`;
         }
@@ -269,7 +310,7 @@
 
     function updateBreadcrumb() {
         const breadcrumb = document.getElementById("breadcrumb");
-        breadcrumb.innerHTML = `<li class="breadcrumb-item"><a href="javascript:void(0)" onclick="loadFiles('')">🏠 Root</a></li>`;
+        breadcrumb.innerHTML = `<li class="breadcrumb-item"><a href="javascript:void(0)" onclick="loadFiles('/')">🏠 Root</a></li>`;
         let relative = currentPath.replace(CONFIG.baseDir, "");
         if (relative.startsWith("/")) relative = relative.substring(1);
         if (relative) {
@@ -284,7 +325,6 @@
         }
     }
 
-    //判断按钮
     function highlightNav() {
         let navLinks = document.querySelectorAll('.nav-link-custom');
         let currentPath = window.location.pathname;

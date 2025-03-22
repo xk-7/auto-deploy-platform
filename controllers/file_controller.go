@@ -31,8 +31,13 @@ func ListFiles(c *gin.Context) {
 
 	files, err := os.ReadDir(path)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "无法读取目录"})
-		return
+		// 尝试修复
+		os.MkdirAll(path, 0755)
+		files, err = os.ReadDir(path)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "无法读取目录"})
+			return
+		}
 	}
 
 	var list []gin.H
