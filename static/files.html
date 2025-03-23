@@ -164,6 +164,22 @@
             transition: background-color 0.2s ease;
         }
 
+        .table .form-check-input {
+            margin: 0;
+            vertical-align: middle;
+        }
+
+
+        th.checkbox-col, td.checkbox-col {
+            width: 40px;
+            text-align: center;
+        }
+
+        .file-name-cell {
+            display: flex;
+            align-items: center;
+            gap: 8px;  /* 让checkbox和图标/名字自然有间距 */
+        }
 
     </style>
 </head>
@@ -203,9 +219,9 @@
         <button class="btn btn-secondary btn-sm" onclick="openMkdir()"><i class="fas fa-folder-plus me-1"></i> 新建文件夹</button>
         <button class="btn btn-primary btn-sm" onclick="batchDownload()"><i class="fas fa-download me-1"></i> 批量下载</button>
         <button class="btn btn-info btn-sm" onclick="openExtract()"><i class="fas fa-file-zipper me-1"></i> 解压上传</button>
-        <button id="batchDeleteBtn" class="btn btn-danger btn-sm" onclick="batchDelete()" disabled>批量删除</button>
-        <button id="batchCompressBtn" class="btn btn-warning btn-sm" onclick="openCompress()" disabled>批量压缩</button>
-        <button id="batchChmodBtn" class="btn btn-secondary btn-sm" onclick="openBatchChmod()" disabled>批量权限</button>
+        <button id="batchDeleteBtn" class="btn btn-danger btn-sm" onclick="batchDelete()" disabled>删除</button>
+        <button id="batchCompressBtn" class="btn btn-warning btn-sm" onclick="openCompress()" disabled>压缩</button>
+        <button id="batchChmodBtn" class="btn btn-secondary btn-sm" onclick="openBatchChmod()" disabled>权限</button>
 
         <!-- 搜索 -->
         <div class="search-group me-2">
@@ -229,8 +245,8 @@
         <table class="table table-hover text-center align-middle">
             <thead class="table-light">
             <tr>
-                <th style="width:40px;">
-                    <input type="checkbox" id="select-all" onchange="toggleSelectAll(this.checked)">
+                <th style="width:40px; text-align:center;">
+                    <input type="checkbox" onchange="toggleAll(this.checked)">
                 </th>
                 <th>名称</th>
                 <th>权限</th>
@@ -417,10 +433,7 @@
             // ✅ 单个 checkbox
             let checkboxHTML = `<input type="checkbox" class="form-check-input" data-name="${file.name}" onchange="toggleSelect('${file.name}', this.checked)">`;
 
-            // ✅ 拖拽属性
-            let dragAttr = `draggable="true" ondragstart="dragStart(event, '${file.name}')"`; // 仅 folder 允许拖
-
-            // ✅ 操作
+            // ✅ 操作按钮
             let action = file.is_dir
                 ? `<button class="btn btn-outline-primary btn-sm me-1" onclick="enterDir('${file.name}')">打开</button>`
                 : `<button class="btn btn-success btn-sm me-1" onclick="downloadFile('${file.name}')">下载</button>`;
@@ -443,22 +456,31 @@
             tr.setAttribute("ondragover", "allowDrop(event)");
             tr.setAttribute("ondrop", `dropFile(event, '${file.name}')`);
 
+            // ✅ 核心：flex 包含 checkbox + icon + name
             tr.innerHTML = `
-        <td style="width:40px;">${checkboxHTML}</td>
-        <td>${icon} ${file.name}</td>
-        <td>${file.mode}</td>
-        <td>${file.is_dir ? "-" : formatSize(file.size)}</td>
-        <td>${file.mod_time}</td>
-        <td>${action}</td>
-    `;
+<td style="width:40px; text-align:center; vertical-align: middle;">
+    <input type="checkbox" class="form-check-input" data-name="${file.name}" onchange="toggleSelect('${file.name}', this.checked)">
+</td>
+<td>
+  <div style="display: flex; align-items: center; gap: 8px;">
+    ${icon}
+    <span>${file.name}</span>
+  </div>
+</td>
+
+<td>${file.mode}</td>
+<td>${file.is_dir ? "-" : formatSize(file.size)}</td>
+<td>${file.mod_time}</td>
+<td>${action}</td>
+`;
 
             table.appendChild(tr);
+
+            // 动画
             setTimeout(() => {
                 tr.classList.add("show", "animate__fadeInUp");
             }, index * 50);
         });
-
-
 
         table.classList.remove("fade-out");
         table.classList.add("fade-in");
@@ -514,15 +536,38 @@
     async function doUpload() {
         let fileInput = document.getElementById("upload-file");
         let file = fileInput.files[0];
-        if (!file) return;
+        if (!file) return Swal.fire('请选择文件', '', 'warning');
+
         let formData = new FormData();
         formData.append("file", file);
         formData.append("path", currentPath);
-        await fetch(`${CONFIG.apiBaseUrl}/files/upload`, {method: "POST", body: formData});
-        Swal.fire({icon: 'success', title: '上传成功', timer: 1000, showConfirmButton: false});
-        bootstrap.Modal.getInstance(document.getElementById('uploadModal')).hide();
-        loadFiles(currentPath);
+
+        // 🟢 显示加载中提示
+        Swal.fire({
+            title: '上传中...',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        let res = await fetch(`${CONFIG.apiBaseUrl}/files/upload`, {
+            method: "POST",
+            body: formData
+        });
+
+        Swal.close(); // 🟢 上传完关闭加载
+
+        if (res.status === 200) {
+            Swal.fire('上传成功', '', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('uploadModal')).hide();
+            loadFiles(currentPath);
+        } else {
+            let data = await res.json();
+            Swal.fire('上传失败', data.message, 'error');
+        }
     }
+
 
     // 新建目录
     function openMkdir() {
