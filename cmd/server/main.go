@@ -49,6 +49,7 @@ func main() {
 
 	// 设置首页 ➡️ 访问 http://localhost:8081/ 直接显示 index.html
 	//r.StaticFile("/", "./static/index.html")
+
 	r.GET("/", func(c *gin.Context) {
 		c.Redirect(http.StatusMovedPermanently, "/static/index.html")
 	})
