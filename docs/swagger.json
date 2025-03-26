@@ -16,6 +16,41 @@
     "host": "api.xkkk.online",
     "basePath": "/",
     "paths": {
+        "/ansible/playbooks": {
+            "get": {
+                "description": "返回指定目录下所有允许的 .yml/.yaml 类型的 Ansible Playbook 文件名列表",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "自动化部署"
+                ],
+                "summary": "获取 Playbook 列表",
+                "responses": {
+                    "200": {
+                        "description": "playbooks 文件列表",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "目录不存在或读取失败",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/ansible/run": {
             "post": {
                 "description": "通过提供 Inventory 文件和 Playbook 路径，执行 Ansible 并实时返回日志流",

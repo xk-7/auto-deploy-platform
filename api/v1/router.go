@@ -10,6 +10,7 @@ func RegisterRoutes(r *gin.Engine) {
 	{
 		// 基本功能
 		v1.GET("/ping", controllers.Ping)
+		v1.GET("/ansible/playbooks", controllers.ListPlaybooks)
 		v1.POST("/run-ansible", controllers.RunAnsible) // ✅ Ansible
 		v1.GET("/ws-system", controllers.SystemInfoWS)  // ✅ ws推送状态
 

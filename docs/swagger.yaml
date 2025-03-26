@@ -310,6 +310,29 @@ info:
   title: Auto Deploy Platform API
   version: "1.0"
 paths:
+  /ansible/playbooks:
+    get:
+      consumes:
+      - application/json
+      description: 返回指定目录下所有允许的 .yml/.yaml 类型的 Ansible Playbook 文件名列表
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: playbooks 文件列表
+          schema:
+            additionalProperties:
+              items:
+                type: string
+              type: array
+            type: object
+        "500":
+          description: 目录不存在或读取失败
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: 获取 Playbook 列表
+      tags:
+      - 自动化部署
   /ansible/run:
     post:
       consumes:

@@ -1,0 +1,17 @@
+---
+- name: Simple Ansible Playbook Test
+  hosts: all  # 适用于所有主机
+  become: yes  # 使用 sudo 权限执行任务
+  tasks:
+    - name: Ping test
+      ansible.builtin.ping:
+
+    - name: Create a test file
+      ansible.builtin.file:
+        path: /tmp/testfile.txt
+        state: touch
+
+    - name: Install nginx
+      ansible.builtin.package:
+        name: nginx
+        state: present
