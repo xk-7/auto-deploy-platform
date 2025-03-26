@@ -68,6 +68,7 @@ func RunAnsible(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil || req.Inventory == "" || req.Playbook == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Inventory 和 Playbook 不能为空"})
 		return
+
 	}
 
 	// 🔸 计算 Playbook 和 Inventory 绝对路径

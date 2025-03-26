@@ -4,5 +4,5 @@ jwt:
   secret: "supersecret"
 ansible:
   playbook_dir: "/home/ubuntu/auto-deploy-platform/ansible/playbooks"
-  inventory_dir: "./ansible/inventories"
+  inventory_dir: "/home/ubuntu/auto-deploy-platform/ansible/inventories"
   allowed_extensions: [".yml", ".yaml"]  # 只允许 YAML 格式
